@@ -14,7 +14,7 @@ import java.math.BigDecimal;
         @UniqueConstraint(columnNames = "transaction_no"),
         @UniqueConstraint(columnNames = "idempotent_key")
 }, indexes = {
-        @Index(columnNames = {"account_id", "created_at"})
+        @Index(columnList = "account_id, created_at")
 })
 public class PointTransaction extends TenantEntity {
 

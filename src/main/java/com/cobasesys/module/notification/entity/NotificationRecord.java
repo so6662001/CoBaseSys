@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Setter
 @Entity
 @Table(name = "t_notification_record", indexes = {
-        @Index(columnNames = {"tenant_id", "user_id", "created_at"})
+        @Index(columnList = "tenant_id, user_id, created_at")
 })
 public class NotificationRecord extends TenantEntity {
 

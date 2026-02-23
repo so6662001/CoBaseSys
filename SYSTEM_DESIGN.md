@@ -719,33 +719,135 @@ CoBaseSys/
 
 ---
 
-## 九、后续扩展方向
+## 九、会员等级系统（已实现）
+
+### 9.1 数据模型
+
+```
+MemberLevel (会员等级)
+├── id              : bigint, PK
+├── tenant_id       : bigint
+├── level_code      : varchar(32), UK (tenant_id + level_code)
+├── level_name      : varchar(64)          -- 如 "普通会员"、"银卡"、"金卡"
+├── level_rank      : int                  -- 排序值，越大等级越高
+├── min_points      : bigint               -- 晋升所需最低累计积分
+├── min_consumption : bigint               -- 晋升所需最低累计消费（分）
+├── point_multiplier: decimal(5,2)         -- 积分倍率加成
+├── discount_rate   : decimal(5,2)         -- 消费折扣
+├── icon_url        : varchar(512)
+├── description     : text
+├── status          : smallint
+
+UserMember (用户会员)
+├── id              : bigint, PK
+├── tenant_id       : bigint
+├── user_id         : varchar(64), UK
+├── level_id        : bigint               -- 当前等级
+├── total_points_earned : bigint           -- 累计获得积分
+├── total_consumption   : bigint           -- 累计消费金额
+├── level_updated_at    : timestamp        -- 最近升级时间
+```
+
+### 9.2 自动晋升机制
+
+通过 Spring Event 监听积分变动和消费变动事件，自动评估用户是否满足升级条件：
+- 积分增加时 → 更新用户累计积分 → 检查是否达到更高等级门槛
+- 消费扣费时 → 更新用户累计消费 → 检查是否达到更高等级门槛
+
+---
+
+## 十、通知服务（已实现）
+
+### 10.1 支持的触发类型
+
+| trigger_type | 说明 |
+|-------------|------|
+| `low_balance` | 余额不足提醒 |
+| `recharge_success` | 充值成功通知 |
+| `level_upgrade` | 会员升级通知 |
+| `point_expiry` | 积分到期提醒 |
+| `custom` | 自定义触发 |
+
+### 10.2 支持的通知渠道
+
+| channel | 说明 |
+|---------|------|
+| `email` | 邮件通知 |
+| `sms` | 短信通知 |
+| `in_app` | 应用内通知 |
+| `webhook` | 通过Webhook推送 |
+
+### 10.3 模板变量
+
+通知模板支持 `${variable}` 占位符，如：
+```
+您的账户余额已不足 ${balance} 元，请及时充值。
+```
+
+---
+
+## 十一、Webhook 支持（已实现）
+
+### 11.1 支持的事件类型
+
+| 事件 | 说明 |
+|------|------|
+| `point.earned` | 积分增加 |
+| `point.deducted` | 积分扣减 |
+| `wallet.recharged` | 充值成功 |
+| `wallet.consumed` | 消费扣费 |
+| `member.upgraded` | 会员升级 |
+
+### 11.2 推送机制
+
+- 异步推送，不阻塞主业务流程
+- HMAC-SHA256 签名保证安全性
+- 失败自动重试（默认最多 3 次）
+- 完整的推送日志记录
+
+---
+
+## 十二、多租户（已实现）
+
+- 每个租户拥有独立的数据空间
+- 所有业务表都包含 `tenant_id` 字段
+- 通过 Hibernate @Filter 自动在查询中添加租户条件
+- 外部系统调用 API 时通过认证自动识别租户
+- 管理后台通过 `X-Tenant-Id` 请求头指定租户
+
+---
+
+## 十三、高并发设计（支持 100 万并发）
+
+| 策略 | 实现 |
+|------|------|
+| 虚拟线程 | Java 21 Project Loom，Spring Boot 原生支持 |
+| 连接池 | HikariCP max-pool-size=100，Tomcat max-connections=20000 |
+| 乐观锁 | 账户表 version 字段，无行锁竞争 |
+| Redis | 热数据缓存、限流计数、分布式锁 |
+| 幂等 | idempotent_key UNIQUE 约束 |
+| 异步 | Webhook/通知使用独立线程池 |
+| GC | ZGC 垃圾回收器，低延迟 |
+
+---
+
+## 十四、技术选型（已确定）
+
+- **开发语言**：Java 21
+- **框架**：Spring Boot 3.2
+- **数据库**：PostgreSQL 16
+- **缓存**：Redis 7 + Redisson
+- **数据迁移**：Flyway
+
+---
+
+## 十五、后续扩展方向
 
 | 方向 | 说明 |
 |------|------|
 | 积分商城 | 积分可兑换商品/优惠券 |
-| 会员等级 | 根据积分/消费金额自动升级会员等级，不同等级享受不同权益 |
 | 优惠券系统 | 统一优惠券发放和核销 |
-| 通知服务 | 余额不足提醒、积分到期提醒 |
-| 数据报表 | 更丰富的运营数据分析 |
-| 多租户 | 支持多公司/品牌独立运营 |
-| Webhook | 关键事件实时通知外部系统 |
-
----
-
-## 十、确认清单
-
-请您确认以下设计要点，确认后即可开始开发：
-
-- [ ] **技术选型**：Python + FastAPI + PostgreSQL + Redis 是否可接受？或有其他偏好？
-- [ ] **数据模型**：积分和钱包的表结构设计是否满足需求？是否需要增减字段？
-- [ ] **积分规则类型**：fixed / rate / tiered / custom 四种是否够用？
-- [ ] **消费规则类型**：fixed / unit_price / tiered / custom 四种是否够用？
-- [ ] **API 设计**：开放 API 和管理 API 的接口是否覆盖了所需场景？
-- [ ] **认证方式**：HMAC 签名认证是否合适？还是更倾向 OAuth2 / JWT？
-- [ ] **充值支付**：是否需要对接具体的支付渠道（微信/支付宝）？还是先只支持后台手动充值？
-- [ ] **积分余额联动**：积分抵扣、积分兑换余额等功能是否需要在一期实现？
-- [ ] **管理后台**：是否需要在一期同步开发前端管理界面？还是先只做后端 API？
-- [ ] **金额单位**：余额系统中金额存储使用"分"（整数），展示时转换为"元"，是否可接受？
-- [ ] **项目结构**：目录结构是否需要调整？
-- [ ] **其他需求**：是否有其他未覆盖的业务场景或特殊要求？
+| 数据报表 | 更丰富的运营数据分析仪表盘 |
+| 管理前端 | Vue 3 + Element Plus 管理后台 |
+| 积分余额联动 | 积分抵扣、积分兑换余额 |
+| 支付对接 | 微信/支付宝支付渠道集成 |

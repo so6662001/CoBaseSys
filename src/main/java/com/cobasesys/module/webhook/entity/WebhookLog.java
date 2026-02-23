@@ -9,8 +9,8 @@ import lombok.Setter;
 @Setter
 @Entity
 @Table(name = "t_webhook_log", indexes = {
-        @Index(columnNames = {"tenant_id", "created_at"}),
-        @Index(columnNames = {"config_id", "created_at"})
+        @Index(columnList = "tenant_id, created_at"),
+        @Index(columnList = "config_id, created_at")
 })
 public class WebhookLog extends TenantEntity {
 
