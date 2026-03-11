@@ -84,6 +84,17 @@
           <template #title><el-icon><DataAnalysis /></el-icon><span>运营报表</span></template>
           <el-menu-item index="/billing/reports">报表中心</el-menu-item>
         </el-sub-menu>
+
+        <el-menu-item-group title="安全管理" />
+
+        <el-sub-menu index="security">
+          <template #title><el-icon><Lock /></el-icon><span>安全中心</span></template>
+          <el-menu-item index="/security/users">管理员</el-menu-item>
+          <el-menu-item index="/security/roles">角色权限</el-menu-item>
+          <el-menu-item index="/security/login-logs">登录日志</el-menu-item>
+          <el-menu-item index="/security/audit-logs">审计日志</el-menu-item>
+          <el-menu-item index="/security/reconciliation">对账报告</el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
 
@@ -95,8 +106,9 @@
             <el-breadcrumb-item>{{ $route.meta.title || '控制台' }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
-        <div style="display:flex;align-items:center;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px">
           <el-tag type="info">租户: {{ app.tenantName }}</el-tag>
+          <span style="font-size:13px;color:#606266">{{ app.realName || app.username }}</span>
           <el-button text type="danger" @click="handleLogout">退出</el-button>
         </div>
       </el-header>

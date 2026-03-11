@@ -5,9 +5,12 @@
         <h1>CoBaseSys</h1>
         <p>公司运营底座系统</p>
       </div>
-      <el-form :model="form" @submit.prevent="handleLogin">
-        <el-form-item>
-          <el-input v-model="form.token" placeholder="管理员 Token" size="large" prefix-icon="Lock" />
+      <el-form :model="form" :rules="rules" ref="formRef" @submit.prevent="handleLogin">
+        <el-form-item prop="username">
+          <el-input v-model="form.username" placeholder="用户名" size="large" prefix-icon="User" />
+        </el-form-item>
+        <el-form-item prop="password">
+          <el-input v-model="form.password" placeholder="密码" size="large" prefix-icon="Lock" type="password" show-password @keyup.enter="handleLogin" />
         </el-form-item>
         <el-form-item>
           <el-input v-model="form.tenantId" placeholder="租户ID (默认: 1)" size="large" prefix-icon="OfficeBuilding" />
@@ -18,6 +21,7 @@
           </el-button>
         </el-form-item>
       </el-form>
+      <div v-if="errorMsg" style="color:#f56c6c;text-align:center;margin-top:-8px;font-size:13px">{{ errorMsg }}</div>
     </div>
   </div>
 </template>
@@ -26,21 +30,34 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
+import { authApi } from '@/api'
 
 const router = useRouter()
 const app = useAppStore()
 const loading = ref(false)
-const form = reactive({ token: '', tenantId: '1' })
+const errorMsg = ref('')
+const formRef = ref(null)
+const form = reactive({ username: '', password: '', tenantId: '1' })
+const rules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+}
 
-function handleLogin() {
-  if (!form.token) return
+async function handleLogin() {
+  try { await formRef.value.validate() } catch { return }
+  errorMsg.value = ''
   loading.value = true
-  app.setToken(form.token)
-  app.setTenant(form.tenantId || '1', '租户' + (form.tenantId || '1'))
-  setTimeout(() => {
-    loading.value = false
+  try {
+    const res = await authApi.login({ username: form.username, password: form.password })
+    const data = res.data
+    app.setAuth(data.accessToken, data.refreshToken, data.userId, data.username, data.realName, data.permissions)
+    app.setTenant(form.tenantId || '1', '租户' + (form.tenantId || '1'))
     router.push('/dashboard')
-  }, 300)
+  } catch (e) {
+    errorMsg.value = e.response?.data?.message || e.message || '登录失败'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

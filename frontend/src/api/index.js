@@ -81,6 +81,32 @@ export const webhookApi = {
   listLogs: (params) => request.get('/admin/webhooks/logs', { params }),
 }
 
+// Auth
+export const authApi = {
+  login: (data) => request.post('/admin/auth/login', data),
+  refresh: (refreshToken) => request.post('/admin/auth/refresh', null, { params: { refreshToken } }),
+  logout: (userId) => request.post('/admin/auth/logout', null, { params: { userId } }),
+  sendMfaCode: (userId) => request.post('/admin/auth/mfa/send', null, { params: { userId } }),
+  verifyMfaCode: (userId, code) => request.post('/admin/auth/mfa/verify', null, { params: { userId, code } }),
+}
+
+// Security - Admin Users
+export const securityUserApi = {
+  list: (params) => request.get('/admin/security/users', { params }),
+  create: (data) => request.post('/admin/security/users', data),
+  resetPassword: (id, newPassword) => request.post(`/admin/security/users/${id}/reset-password`, null, { params: { newPassword } }),
+  delete: (id) => request.delete(`/admin/security/users/${id}`),
+  listRoles: () => request.get('/admin/security/roles'),
+  listPermissions: () => request.get('/admin/security/permissions'),
+  loginLogs: (params) => request.get('/admin/security/login-logs', { params }),
+}
+
+// Security - Audit & Reconciliation
+export const auditApi = {
+  listAuditLogs: (params) => request.get('/admin/security/audit-logs', { params }),
+  listReconciliationReports: (params) => request.get('/admin/security/reconciliation-reports', { params }),
+}
+
 // Billing - Products
 export const billingProductApi = {
   list: (params) => request.get('/admin/billing/products', { params }),

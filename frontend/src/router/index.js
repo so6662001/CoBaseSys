@@ -44,6 +44,11 @@ const routes = [
       { path: 'billing/approvals', name: 'BillingApprovals', component: () => import('@/views/billing/trials/Approvals.vue'), meta: { title: '延长审批' } },
       { path: 'billing/reports', name: 'BillingReports', component: () => import('@/views/billing/reports/Index.vue'), meta: { title: '运营报表' } },
       { path: 'billing/reports/customer/:customerId', name: 'BillingCustomerAssets', component: () => import('@/views/billing/reports/CustomerAssets.vue'), meta: { title: '客户资产' } },
+      { path: 'security/users', name: 'SecurityUsers', component: () => import('@/views/security/users/Index.vue'), meta: { title: '管理员' } },
+      { path: 'security/roles', name: 'SecurityRoles', component: () => import('@/views/security/roles/Index.vue'), meta: { title: '角色权限' } },
+      { path: 'security/login-logs', name: 'SecurityLoginLogs', component: () => import('@/views/security/logs/LoginLogs.vue'), meta: { title: '登录日志' } },
+      { path: 'security/audit-logs', name: 'SecurityAuditLogs', component: () => import('@/views/security/audit/AuditLogs.vue'), meta: { title: '审计日志' } },
+      { path: 'security/reconciliation', name: 'SecurityReconciliation', component: () => import('@/views/security/reconciliation/Index.vue'), meta: { title: '对账报告' } },
     ]
   },
   {

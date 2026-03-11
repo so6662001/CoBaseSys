@@ -9,11 +9,16 @@ const request = axios.create({
 
 request.interceptors.request.use(config => {
   const app = useAppStore()
-  if (app.token) {
-    config.headers['Authorization'] = `Bearer ${app.token}`
+  const token = app.token
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`
   }
   if (app.tenantId) {
     config.headers['X-Tenant-Id'] = app.tenantId
+  }
+  if (app.userId) {
+    config.headers['X-Operator-Id'] = app.userId
+    config.headers['X-Operator-Name'] = app.realName || app.username
   }
   return config
 })
