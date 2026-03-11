@@ -86,8 +86,9 @@ public class BillingUsageLedgerService {
     }
 
     public PageResult<BillingDTO.UsageLedgerResp> listByCustomer(Long tenantId, String customerId, Pageable pageable) {
-        Page<BillingUsageLedger> page = ledgerRepository
-                .findByTenantIdAndCustomerIdOrderByCreatedAtDesc(tenantId, customerId, pageable);
+        Page<BillingUsageLedger> page = (customerId != null && !customerId.isBlank())
+                ? ledgerRepository.findByTenantIdAndCustomerIdOrderByCreatedAtDesc(tenantId, customerId, pageable)
+                : ledgerRepository.findByTenantIdOrderByCreatedAtDesc(tenantId, pageable);
         return PageResult.from(page.map(this::toResp));
     }
 

@@ -32,8 +32,7 @@ public class BillingCheckController {
     @GetMapping("/subscription/{subscriptionNo}")
     @Operation(summary = "查询订阅详情")
     public ApiResponse<BillingDTO.SubscriptionResp> checkSubscription(@PathVariable String subscriptionNo) {
-        // would need a findBySubscriptionNo method returning resp
-        return ApiResponse.ok(null);
+        return ApiResponse.ok(subscriptionService.getBySubscriptionNo(subscriptionNo));
     }
 
     @PostMapping("/usage/report")

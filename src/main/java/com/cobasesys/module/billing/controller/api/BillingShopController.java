@@ -63,6 +63,14 @@ public class BillingShopController {
         return ApiResponse.ok(orderService.createOrder(req, "CUSTOMER", null, null));
     }
 
+    @PostMapping("/orders/pay-callback")
+    @Operation(summary = "支付回调")
+    public ApiResponse<BillingDTO.OrderResp> payCallback(@RequestParam String orderNo,
+                                                           @RequestParam(required = false) String paymentNo,
+                                                           @RequestParam(defaultValue = "true") boolean success) {
+        return ApiResponse.ok(orderService.payCallback(orderNo, paymentNo, success));
+    }
+
     @GetMapping("/orders/{orderNo}")
     @Operation(summary = "查询订单")
     public ApiResponse<BillingDTO.OrderResp> getOrder(@PathVariable String orderNo) {
@@ -89,6 +97,21 @@ public class BillingShopController {
     @Operation(summary = "订阅详情")
     public ApiResponse<BillingDTO.SubscriptionResp> subscriptionDetail(@PathVariable Long id) {
         return ApiResponse.ok(subscriptionService.getById(id));
+    }
+
+    @PostMapping("/my/subscriptions/{id}/renew")
+    @Operation(summary = "续费")
+    public ApiResponse<BillingDTO.SubscriptionResp> renew(@PathVariable Long id,
+                                                            @RequestParam(defaultValue = "YEAR") String periodType,
+                                                            @RequestParam(defaultValue = "1") int periodCount) {
+        return ApiResponse.ok(subscriptionService.renew(id, periodType, periodCount));
+    }
+
+    @GetMapping("/my/trials")
+    @Operation(summary = "我的试用列表")
+    public ApiResponse<?> myTrials(@RequestParam String customerId) {
+        Long tenantId = TenantContext.requireTenantId();
+        return ApiResponse.ok(trialService.listByCustomer(tenantId, customerId));
     }
 
     @GetMapping("/my/expiring-alerts")

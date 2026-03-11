@@ -7,6 +7,7 @@ import com.cobasesys.common.tenant.TenantContext;
 import com.cobasesys.common.util.IdGenerator;
 import com.cobasesys.module.billing.dto.BillingDTO;
 import com.cobasesys.module.billing.entity.*;
+import com.cobasesys.module.billing.event.BillingEvents;
 import com.cobasesys.module.billing.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -112,7 +113,26 @@ public class BillingOrderService {
 
         activateSubscriptions(order);
 
+        eventPublisher.publishEvent(new BillingEvents.OrderPaidEvent(this,
+                order.getTenantId(), order.getCustomerId(), order.getOrderNo(), order.getActualAmount()));
+
         return toOrderResp(order);
+    }
+
+    @Transactional("billingTransactionManager")
+    public BillingDTO.OrderResp payCallback(String orderNo, String paymentNo, boolean success) {
+        BillingOrder order = orderRepository.findByOrderNo(orderNo)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+        if (order.getPaymentStatus() != 0) {
+            return toOrderResp(order);
+        }
+        if (!success) {
+            order.setPaymentStatus(2);
+            order.setStatus(2);
+            orderRepository.save(order);
+            return toOrderResp(order);
+        }
+        return confirmPayment(order.getId(), "online", paymentNo);
     }
 
     @Transactional("billingTransactionManager")

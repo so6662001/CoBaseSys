@@ -14,6 +14,8 @@ public interface BillingUsageLedgerRepository extends JpaRepository<BillingUsage
     Page<BillingUsageLedger> findByTenantIdAndCustomerIdOrderByCreatedAtDesc(
             Long tenantId, String customerId, Pageable pageable);
 
+    Page<BillingUsageLedger> findByTenantIdOrderByCreatedAtDesc(Long tenantId, Pageable pageable);
+
     Optional<BillingUsageLedger> findByIdempotentKey(String idempotentKey);
 
     Optional<BillingUsageLedger> findTopBySubscriptionIdOrderByIdDesc(Long subscriptionId);

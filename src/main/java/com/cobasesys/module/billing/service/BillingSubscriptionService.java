@@ -6,6 +6,7 @@ import com.cobasesys.common.model.PageResult;
 import com.cobasesys.common.tenant.TenantContext;
 import com.cobasesys.module.billing.dto.BillingDTO;
 import com.cobasesys.module.billing.entity.BillingSubscription;
+import com.cobasesys.module.billing.repository.BillingProductRepository;
 import com.cobasesys.module.billing.repository.BillingSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,6 +23,7 @@ import java.util.List;
 public class BillingSubscriptionService {
 
     private final BillingSubscriptionRepository subscriptionRepository;
+    private final BillingProductRepository productRepository;
 
     public PageResult<BillingDTO.SubscriptionResp> list(String customerId, String status, Pageable pageable) {
         Long tenantId = TenantContext.requireTenantId();
@@ -87,20 +89,65 @@ public class BillingSubscriptionService {
         subscriptionRepository.save(sub);
     }
 
+    public BillingDTO.SubscriptionResp getBySubscriptionNo(String subscriptionNo) {
+        return toResp(subscriptionRepository.findBySubscriptionNo(subscriptionNo)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND)));
+    }
+
+    @Transactional("billingTransactionManager")
+    public BillingDTO.SubscriptionResp renew(Long id, String periodType, int periodCount) {
+        BillingSubscription sub = subscriptionRepository.findById(id)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+
+        int days = periodCount * periodToDays(periodType);
+        LocalDate newEnd = sub.getEndDate().isBefore(LocalDate.now())
+                ? LocalDate.now().plusDays(days) : sub.getEndDate().plusDays(days);
+
+        sub.setEndDate(newEnd);
+        sub.setTotalDays(sub.getTotalDays() + days);
+        sub.setStatus("ACTIVE");
+        sub.setPriceLockedUntil(newEnd);
+        subscriptionRepository.save(sub);
+        return toResp(sub);
+    }
+
     public List<BillingDTO.ProductCheckResp> checkProducts(Long tenantId, BillingDTO.ProductCheckReq req) {
         return req.getProductCodes().stream().map(code -> {
             BillingDTO.ProductCheckResp resp = new BillingDTO.ProductCheckResp();
             resp.setProductCode(code);
-            var subs = subscriptionRepository.findByTenantIdAndCustomerIdAndSourceTypeAndSourceIdAndStatusIn(
-                    tenantId, req.getCustomerId(), "PRODUCT", 0L,
-                    List.of("ACTIVE", "EXPIRING", "TRIAL"));
-
-            // simplified: look through all subs to find matching product code
-            // In production, would join with product table
             resp.setStatus("NOT_FOUND");
             resp.setNeedRenewal(false);
+
+            var productOpt = productRepository.findByTenantIdAndProductCode(tenantId, code);
+            if (productOpt.isEmpty()) return resp;
+            var product = productOpt.get();
+            resp.setProductName(product.getProductName());
+
+            var subs = subscriptionRepository.findByTenantIdAndCustomerIdAndSourceTypeAndSourceIdAndStatusIn(
+                    tenantId, req.getCustomerId(), "PRODUCT", product.getId(),
+                    List.of("ACTIVE", "EXPIRING", "TRIAL", "EXPIRED"));
+
+            if (subs.isEmpty()) return resp;
+            var sub = subs.get(0);
+            resp.setStatus(sub.getStatus());
+            resp.setQuantity(sub.getQuantity());
+            resp.setStartDate(sub.getStartDate());
+            resp.setEndDate(sub.getEndDate());
+            int daysRemaining = (int) ChronoUnit.DAYS.between(LocalDate.now(), sub.getEndDate());
+            resp.setDaysRemaining(Math.max(daysRemaining, 0));
+            resp.setNeedRenewal(daysRemaining <= 15);
+            resp.setRenewalPrice(sub.getRenewalPrice());
+            if (sub.getRenewalPrice() != null) resp.setRenewalPriceDisplay(BillingDTO.formatAmount(sub.getRenewalPrice()));
+            resp.setUsageQuota(sub.getUsageQuota());
+            resp.setUsageUsed(sub.getUsageUsed());
+            resp.setUsageRemaining(Math.max(sub.getUsageQuota() - sub.getUsageUsed(), 0));
             return resp;
         }).toList();
+    }
+
+    private int periodToDays(String periodType) {
+        if (periodType == null) return 365;
+        return switch (periodType) { case "YEAR" -> 365; case "QUARTER" -> 90; case "MONTH" -> 30; default -> 365; };
     }
 
     private BillingDTO.SubscriptionResp toResp(BillingSubscription sub) {

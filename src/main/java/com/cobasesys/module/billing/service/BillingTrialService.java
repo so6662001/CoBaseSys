@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -197,6 +198,11 @@ public class BillingTrialService {
                 ? approvalRepository.findByTenantIdAndStatus(tenantId, status, pageable)
                 : approvalRepository.findByTenantIdOrderByCreatedAtDesc(tenantId, pageable);
         return PageResult.from(page.map(this::toApprovalResp));
+    }
+
+    public List<BillingDTO.TrialResp> listByCustomer(Long tenantId, String customerId) {
+        return trialRepository.findByTenantIdAndCustomerId(tenantId, customerId)
+                .stream().map(this::toResp).toList();
     }
 
     private BillingDTO.TrialResp toResp(BillingTrial t) {
