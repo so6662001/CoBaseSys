@@ -29,6 +29,13 @@ export const pointApi = {
   deleteRule: (id) => request.delete(`/admin/points/rules/${id}`),
   listAccounts: (params) => request.get('/admin/points/accounts', { params }),
   listTransactions: (params) => request.get('/admin/points/transactions', { params }),
+  giftApply: (data) => request.post('/admin/points/gift/apply', data),
+  giftPending: (params) => request.get('/admin/points/gift/pending', { params }),
+  giftApprove: (id, params) => request.post(`/admin/points/gift/${id}/approve`, null, { params }),
+  giftReject: (id, params) => request.post(`/admin/points/gift/${id}/reject`, null, { params }),
+  giftList: (params) => request.get('/admin/points/gift/list', { params }),
+  giftSummary: () => request.get('/admin/points/gift/summary'),
+  giftTransactions: (params) => request.get('/admin/points/gift/transactions', { params }),
 }
 
 // Wallet

@@ -58,6 +58,10 @@ public class PointTransaction extends TenantEntity {
     @Column(name = "idempotent_key", nullable = false, unique = true, length = 128)
     private String idempotentKey;
 
+    /** EARNED / GIFT_MANUAL / GIFT_ORDER / GIFT_ACTIVITY / SYSTEM */
+    @Column(name = "source_type", nullable = false, length = 20)
+    private String sourceType = "EARNED";
+
     @Column(name = "data_hash", length = 64)
     private String dataHash = "";
 

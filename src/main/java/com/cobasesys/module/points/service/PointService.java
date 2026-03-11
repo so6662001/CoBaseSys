@@ -422,6 +422,8 @@ public class PointService {
         resp.setDirectionText(tx.getDirection() == 1 ? "收入" : "支出");
         resp.setPoints(tx.getPoints());
         resp.setBalanceAfter(tx.getBalanceAfter());
+        resp.setSourceType(tx.getSourceType());
+        resp.setSourceTypeText(PointDTO.sourceTypeText(tx.getSourceType()));
         resp.setBizOrderNo(tx.getBizOrderNo());
         resp.setRemark(tx.getRemark());
         resp.setCreatedAt(tx.getCreatedAt());

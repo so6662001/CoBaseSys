@@ -21,6 +21,9 @@
           <el-menu-item index="/points/rules">积分规则</el-menu-item>
           <el-menu-item index="/points/accounts">积分账户</el-menu-item>
           <el-menu-item index="/points/transactions">积分流水</el-menu-item>
+          <el-menu-item index="/points/gift/apply">赠送申请</el-menu-item>
+          <el-menu-item index="/points/gift/approval">赠送审批</el-menu-item>
+          <el-menu-item index="/points/gift/report">赠送报表</el-menu-item>
         </el-sub-menu>
 
         <el-sub-menu index="wallet">

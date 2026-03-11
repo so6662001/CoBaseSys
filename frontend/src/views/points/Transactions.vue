@@ -8,6 +8,9 @@
         <el-tag :type="row.direction===1?'success':row.direction===-1?'danger':'info'" size="small">{{ row.directionText || (row.direction===1?'收入':'支出') }}</el-tag>
       </template>
     </el-table-column>
+    <el-table-column prop="sourceTypeText" label="来源" width="90">
+      <template #default="{ row }"><el-tag :type="row.sourceType?.startsWith('GIFT')?'warning':''" size="small">{{ row.sourceTypeText || '赚取' }}</el-tag></template>
+    </el-table-column>
     <el-table-column prop="points" label="积分" width="100">
       <template #default="{ row }"><span style="font-weight:600">{{ row.points }}</span></template>
     </el-table-column>

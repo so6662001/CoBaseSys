@@ -145,10 +145,68 @@ public class PointDTO {
         private String directionText;
         private Long points;
         private Long balanceAfter;
+        private String sourceType;
+        private String sourceTypeText;
         private String actionName;
         private String systemName;
         private String bizOrderNo;
         private String remark;
         private LocalDateTime createdAt;
+    }
+
+    // ===== Gift Approval =====
+
+    @Data
+    public static class GiftApplyRequest {
+        @NotBlank(message = "客户ID不能为空") private String customerId;
+        private String customerName;
+        @Positive(message = "赠送积分必须大于0") private Long points;
+        @NotBlank(message = "赠送原因不能为空") private String giftReason;
+        private String sourceType = "GIFT_MANUAL";
+        @NotBlank(message = "申请人ID不能为空") private String applicantId;
+        private String applicantName;
+    }
+
+    @Data
+    public static class GiftApprovalResponse {
+        private Long id;
+        private String customerId;
+        private String customerName;
+        private Long points;
+        private String giftReason;
+        private String sourceType;
+        private String applicantId;
+        private String applicantName;
+        private LocalDateTime applyTime;
+        private String status;
+        private String statusText;
+        private String approverId;
+        private String approverName;
+        private LocalDateTime approveTime;
+        private String approveRemark;
+        private String transactionNo;
+        private LocalDateTime createdAt;
+    }
+
+    @Data
+    public static class GiftSummary {
+        private Long totalApproved;
+        private Long totalPending;
+        private Long totalGiftedPoints;
+        private Long manualGiftedPoints;
+        private Long orderGiftedPoints;
+        private Long activityGiftedPoints;
+    }
+
+    public static String sourceTypeText(String sourceType) {
+        if (sourceType == null) return "赚取";
+        return switch (sourceType) {
+            case "EARNED" -> "规则赚取";
+            case "GIFT_MANUAL" -> "人工赠送";
+            case "GIFT_ORDER" -> "订单赠送";
+            case "GIFT_ACTIVITY" -> "活动赠送";
+            case "SYSTEM" -> "系统调整";
+            default -> sourceType;
+        };
     }
 }

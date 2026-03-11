@@ -16,4 +16,7 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
     Page<PointTransaction> findByTenantIdOrderByCreatedAtDesc(Long tenantId, Pageable pageable);
 
     long countByActionIdAndAccountId(Long actionId, Long accountId);
+
+    Page<PointTransaction> findByTenantIdAndSourceTypeOrderByCreatedAtDesc(
+            Long tenantId, String sourceType, Pageable pageable);
 }
