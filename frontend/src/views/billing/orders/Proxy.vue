@@ -49,6 +49,8 @@ const form = reactive({ customerId:'', customerName:'', items:[{itemType:'PRODUC
 const rules = { customerId:[{required:true,message:'必填'}], customerName:[{required:true,message:'必填'}] }
 async function handleSubmit() {
   try { await formRef.value.validate() } catch { return }
+  const invalidItem = form.items.find(i => !i.itemId || !i.quantity)
+  if (invalidItem) { ElMessage.warning('请完善商品明细：ID和数量不能为空'); return }
   submitting.value = true
   try {
     const r = await billingOrderApi.proxyOrder(form, { operatorId:'admin', operatorName:'管理员' })

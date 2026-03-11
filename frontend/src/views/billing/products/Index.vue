@@ -15,8 +15,10 @@
     <el-table-column prop="pointsPayable" label="积分支付" width="80">
       <template #default="{row}">{{ row.pointsPayable ? '支持('+row.maxPointsRatio*100+'%)' : '不支持' }}</template>
     </el-table-column>
-    <el-table-column prop="status" label="状态" width="70">
-      <template #default="{row}"><el-tag :type="row.status===1?'success':'info'" size="small">{{ row.status===1?'上架':'下架' }}</el-tag></template>
+    <el-table-column prop="status" label="状态" width="90">
+      <template #default="{row}">
+        <el-switch :model-value="row.status===1" @change="toggleStatus(row)" active-text="上架" inactive-text="下架" inline-prompt size="small" />
+      </template>
     </el-table-column>
   </CrudTable>
 
@@ -101,5 +103,6 @@ async function handleSubmit() {
   } finally { submitting.value = false }
 }
 async function handleDelete(row) { await billingProductApi.delete(row.id); ElMessage.success('删除成功'); fetchData() }
+async function toggleStatus(row) { await billingProductApi.update(row.id, { ...row, status: row.status===1?0:1 }); ElMessage.success('状态已切换'); fetchData() }
 onMounted(fetchData)
 </script>

@@ -42,16 +42,16 @@
 const cards = [
   { label: '积分管理', desc: '管理积分动作和规则', icon: 'Star', color: '#f6a609', route: '/points/actions' },
   { label: '钱包管理', desc: '管理消费动作和计费', icon: 'Wallet', color: '#67c23a', route: '/wallet/actions' },
-  { label: '会员等级', desc: '会员等级自动晋升', icon: 'User', color: '#409eff', route: '/members/levels' },
-  { label: 'Webhook', desc: '事件推送配置', icon: 'Connection', color: '#e6a23c', route: '/webhooks' },
+  { label: '计费订单', desc: '订单与代客下单', icon: 'ShoppingCart', color: '#409eff', route: '/billing/orders' },
+  { label: '运营报表', desc: '到期预警与客户资产', icon: 'DataAnalysis', color: '#e6a23c', route: '/billing/reports' },
 ]
 
 const quickLinks = [
-  { label: '租户管理', route: '/tenants' },
-  { label: '外部系统', route: '/systems' },
-  { label: '积分账户', route: '/points/accounts' },
-  { label: '充值促销', route: '/wallet/promotions' },
+  { label: '产品管理', route: '/billing/products' },
+  { label: '套餐管理', route: '/billing/packages' },
+  { label: '订阅管理', route: '/billing/subscriptions' },
+  { label: '延长审批', route: '/billing/approvals' },
+  { label: '代客下单', route: '/billing/orders/proxy' },
   { label: '通知模板', route: '/notifications/templates' },
-  { label: '通知记录', route: '/notifications/records' },
 ]
 </script>

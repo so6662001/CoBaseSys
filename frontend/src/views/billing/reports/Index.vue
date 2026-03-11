@@ -8,8 +8,11 @@
       <el-col :span="6"><el-card shadow="hover" style="cursor:pointer" @click="activeTab='expired'">
         <div style="text-align:center"><div style="font-size:32px;font-weight:700;color:#f56c6c">{{ expiredSubs.length }}</div><div style="color:#909399;margin-top:4px">已到期订阅</div></div>
       </el-card></el-col>
-      <el-col :span="6"><el-card shadow="hover" style="cursor:pointer" @click="activeTab='expiringTrials'">
+      <el-col :span="3"><el-card shadow="hover" style="cursor:pointer" @click="activeTab='expiringTrials'">
         <div style="text-align:center"><div style="font-size:32px;font-weight:700;color:#409eff">{{ expiringTrials.length }}</div><div style="color:#909399;margin-top:4px">活跃试用</div></div>
+      </el-card></el-col>
+      <el-col :span="3"><el-card shadow="hover" style="cursor:pointer" @click="activeTab='expiredTrials'">
+        <div style="text-align:center"><div style="font-size:32px;font-weight:700;color:#909399">{{ expiredTrialsList.length }}</div><div style="color:#909399;margin-top:4px">已到期试用</div></div>
       </el-card></el-col>
       <el-col :span="6"><el-card shadow="hover" style="cursor:pointer" @click="activeTab='customer'">
         <div style="text-align:center"><el-icon :size="32" color="#67c23a"><Search /></el-icon><div style="color:#909399;margin-top:4px">客户资产查询</div></div>
@@ -56,6 +59,18 @@
       </el-table>
     </el-card>
 
+    <el-card shadow="never" v-if="activeTab==='expiredTrials'">
+      <template #header><span style="font-weight:600">已到期的试用</span></template>
+      <el-table :data="expiredTrialsList" border stripe>
+        <el-table-column prop="customerId" label="客户ID" width="100" />
+        <el-table-column prop="sourceName" label="产品/套餐" width="160" />
+        <el-table-column prop="trialDays" label="试用天数" width="80" />
+        <el-table-column prop="endDate" label="到期日" width="100" />
+        <el-table-column prop="totalExtendDays" label="累计延长" width="80" />
+        <el-table-column prop="status" label="状态" width="70"><template #default><el-tag type="info" size="small">已到期</el-tag></template></el-table-column>
+      </el-table>
+    </el-card>
+
     <el-card shadow="never" v-if="activeTab==='customer'">
       <template #header><span style="font-weight:600">客户资产全景</span></template>
       <div class="filter-bar" style="margin-bottom:16px">
@@ -86,19 +101,21 @@
 import { ref, onMounted } from 'vue'
 import { billingReportApi } from '@/api'
 const activeTab = ref('expiring')
-const expiringSubs = ref([]), expiredSubs = ref([]), expiringTrials = ref([]), customerAssets = ref([])
+const expiringSubs = ref([]), expiredSubs = ref([]), expiringTrials = ref([]), expiredTrialsList = ref([]), customerAssets = ref([])
 const searchCustomerId = ref('')
 
 async function loadReports() {
   try {
-    const [r1, r2, r3] = await Promise.all([
+    const [r1, r2, r3, r4] = await Promise.all([
       billingReportApi.expiringSubscriptions(),
       billingReportApi.expiredSubscriptions(),
-      billingReportApi.expiringTrials({ page:1, pageSize:100 })
+      billingReportApi.expiringTrials({ page:1, pageSize:100 }),
+      billingReportApi.expiredTrials({ page:1, pageSize:100 })
     ])
     expiringSubs.value = r1.data || []
     expiredSubs.value = r2.data || []
     expiringTrials.value = r3.data?.items || []
+    expiredTrialsList.value = r4.data?.items || []
   } catch {}
 }
 
