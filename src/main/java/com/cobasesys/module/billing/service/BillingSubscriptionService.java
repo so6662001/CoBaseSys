@@ -39,8 +39,10 @@ public class BillingSubscriptionService {
     }
 
     public BillingDTO.SubscriptionResp getById(Long id) {
-        return toResp(subscriptionRepository.findById(id)
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND)));
+        BillingSubscription sub = subscriptionRepository.findById(id)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+        verifyTenant(sub);
+        return toResp(sub);
     }
 
     public List<BillingDTO.SubscriptionResp> getExpiringAlerts(Long tenantId, String customerId) {
@@ -62,8 +64,10 @@ public class BillingSubscriptionService {
 
     @Transactional("billingTransactionManager")
     public BillingDTO.SubscriptionResp extend(Long id, int days) {
+        if (days <= 0) throw new BizException(ErrorCode.PARAM_INVALID, "延期天数必须大于0");
         BillingSubscription sub = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+        verifyTenant(sub);
         sub.setEndDate(sub.getEndDate().plusDays(days));
         sub.setTotalDays(sub.getTotalDays() + days);
         if (sub.getPriceLockedUntil() != null) {
@@ -77,6 +81,7 @@ public class BillingSubscriptionService {
     public void suspend(Long id) {
         BillingSubscription sub = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+        verifyTenant(sub);
         sub.setStatus("SUSPENDED");
         subscriptionRepository.save(sub);
     }
@@ -85,19 +90,25 @@ public class BillingSubscriptionService {
     public void resume(Long id) {
         BillingSubscription sub = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+        verifyTenant(sub);
         sub.setStatus("ACTIVE");
         subscriptionRepository.save(sub);
     }
 
     public BillingDTO.SubscriptionResp getBySubscriptionNo(String subscriptionNo) {
-        return toResp(subscriptionRepository.findBySubscriptionNo(subscriptionNo)
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND)));
+        BillingSubscription sub = subscriptionRepository.findBySubscriptionNo(subscriptionNo)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+        verifyTenant(sub);
+        return toResp(sub);
     }
 
     @Transactional("billingTransactionManager")
     public BillingDTO.SubscriptionResp renew(Long id, String periodType, int periodCount) {
         BillingSubscription sub = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+        verifyTenant(sub);
+        if ("SUSPENDED".equals(sub.getStatus())) throw new BizException(ErrorCode.PARAM_INVALID, "已暂停的订阅不能续费");
+        if ("ONE_TIME".equals(sub.getPricingModel())) throw new BizException(ErrorCode.PARAM_INVALID, "买断类订阅不需续费");
 
         int days = periodCount * periodToDays(periodType);
         LocalDate newEnd = sub.getEndDate().isBefore(LocalDate.now())
@@ -189,5 +200,12 @@ public class BillingSubscriptionService {
             resp.setRenewalPriceDisplay(BillingDTO.formatAmount(sub.getRenewalPrice()));
         }
         return resp;
+    }
+
+    private void verifyTenant(BillingSubscription sub) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId != null && !tenantId.equals(sub.getTenantId())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权访问该订阅");
+        }
     }
 }

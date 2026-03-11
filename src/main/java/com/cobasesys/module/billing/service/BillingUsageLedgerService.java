@@ -42,7 +42,16 @@ public class BillingUsageLedgerService {
         BillingSubscription sub = subscriptionRepository.findBySubscriptionNo(req.getSubscriptionNo())
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "订阅不存在"));
 
-        long balanceBefore = sub.getUsageQuota() - sub.getUsageUsed();
+        if (!"ACTIVE".equals(sub.getStatus()) && !"TRIAL".equals(sub.getStatus())) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "订阅状态不允许上报用量，当前状态: " + sub.getStatus());
+        }
+
+        long remaining = sub.getUsageQuota() - sub.getUsageUsed();
+        if (sub.getUsageQuota() > 0 && remaining <= 0) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "用量配额已耗尽");
+        }
+
+        long balanceBefore = remaining;
         long quantity = req.getQuantity();
 
         sub.setUsageUsed(sub.getUsageUsed() + Math.abs(quantity));

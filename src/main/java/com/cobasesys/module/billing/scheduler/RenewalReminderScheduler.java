@@ -2,8 +2,10 @@ package com.cobasesys.module.billing.scheduler;
 
 import com.cobasesys.module.billing.entity.BillingRenewalReminder;
 import com.cobasesys.module.billing.entity.BillingSubscription;
+import com.cobasesys.module.billing.entity.BillingTrial;
 import com.cobasesys.module.billing.repository.BillingRenewalReminderRepository;
 import com.cobasesys.module.billing.repository.BillingSubscriptionRepository;
+import com.cobasesys.module.billing.repository.BillingTrialRepository;
 import com.cobasesys.module.system.entity.Tenant;
 import com.cobasesys.module.system.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class RenewalReminderScheduler {
 
     private final BillingSubscriptionRepository subscriptionRepository;
     private final BillingRenewalReminderRepository reminderRepository;
+    private final BillingTrialRepository trialRepository;
     private final TenantRepository tenantRepository;
     private final StringRedisTemplate redisTemplate;
 
@@ -98,6 +101,18 @@ public class RenewalReminderScheduler {
                 sub.setStatus("EXPIRED");
                 subscriptionRepository.save(sub);
                 log.info("Subscription {} expired", sub.getSubscriptionNo());
+
+                if (sub.getIsTrial() == 1) {
+                    trialRepository.findByTenantIdAndCustomerIdAndSourceTypeAndSourceId(
+                            tenantId, sub.getCustomerId(), sub.getSourceType(), sub.getSourceId()
+                    ).ifPresent(trial -> {
+                        if ("ACTIVE".equals(trial.getStatus())) {
+                            trial.setStatus("EXPIRED");
+                            trialRepository.save(trial);
+                            log.info("Trial {} expired for subscription {}", trial.getId(), sub.getSubscriptionNo());
+                        }
+                    });
+                }
             }
         }
     }

@@ -32,6 +32,7 @@
     <el-table-column label="操作" width="240" fixed="right">
       <template #default="{row}">
         <el-button link type="primary" @click="viewDetail(row)">详情</el-button>
+        <el-button v-if="(row.status==='ACTIVE'||row.status==='EXPIRING'||row.status==='EXPIRED')&&row.pricingModel!=='ONE_TIME'" link type="warning" @click="openRenew(row)">续费</el-button>
         <el-button v-if="row.status==='ACTIVE'||row.status==='EXPIRING'" link type="success" @click="openExtend(row)">延期</el-button>
         <el-button v-if="row.status==='ACTIVE'" link type="warning" @click="suspend(row)">暂停</el-button>
         <el-button v-if="row.status==='SUSPENDED'" link type="success" @click="resume(row)">恢复</el-button>
@@ -55,6 +56,19 @@
       <el-descriptions-item v-if="detailSub.usageQuota>0" label="用量">{{ detailSub.usageUsed }}/{{ detailSub.usageQuota }} {{ detailSub.usageUnit }}</el-descriptions-item>
       <el-descriptions-item v-if="detailSub.spaceTotal>0" label="空间">{{ (detailSub.spaceUsed/1073741824).toFixed(1) }}GB / {{ (detailSub.spaceTotal/1073741824).toFixed(1) }}GB</el-descriptions-item>
     </el-descriptions>
+  </el-dialog>
+
+  <el-dialog v-model="renewVisible" title="续费" width="450px">
+    <el-alert type="info" :closable="false" style="margin-bottom:16px">
+      续费将延长订阅有效期，续费价格：{{ renewSub?.renewalPriceDisplay || '待计算' }}
+    </el-alert>
+    <el-form label-width="80px">
+      <el-form-item label="续费周期">
+        <el-select v-model="renewPeriodType"><el-option value="YEAR" label="年" /><el-option value="QUARTER" label="季" /><el-option value="MONTH" label="月" /></el-select>
+      </el-form-item>
+      <el-form-item label="周期数"><el-input-number v-model="renewPeriodCount" :min="1" :max="10" /></el-form-item>
+    </el-form>
+    <template #footer><el-button @click="renewVisible=false">取消</el-button><el-button type="primary" @click="doRenew">确认续费</el-button></template>
   </el-dialog>
 
   <el-dialog v-model="extendVisible" title="手动延期" width="400px">
@@ -81,6 +95,7 @@ import CrudTable from '@/components/CrudTable.vue'
 const list = ref([]), loading = ref(false), total = ref(0), page = ref(1), pageSize = ref(20)
 const filterCustomerId = ref(''), filterStatus = ref('')
 const detailVisible = ref(false), detailSub = ref(null)
+const renewVisible = ref(false), renewSub = ref(null), renewPeriodType = ref('YEAR'), renewPeriodCount = ref(1)
 const extendVisible = ref(false), extendDays = ref(30), extendSubId = ref(null)
 const ledgerVisible = ref(false), ledgerList = ref([])
 
@@ -94,6 +109,12 @@ async function fetchData() {
   } finally { loading.value = false }
 }
 async function viewDetail(row) { const r = await billingSubApi.getById(row.id); detailSub.value = r.data; detailVisible.value = true }
+function openRenew(row) { renewSub.value = row; renewPeriodType.value = 'YEAR'; renewPeriodCount.value = 1; renewVisible.value = true }
+async function doRenew() {
+  // In production, this would create a renewal order with payment. For now, direct renew:
+  await billingSubApi.extend(renewSub.value.id, renewPeriodCount.value * (renewPeriodType.value==='YEAR'?365:renewPeriodType.value==='QUARTER'?90:30))
+  ElMessage.success('续费成功'); renewVisible.value = false; fetchData()
+}
 function openExtend(row) { extendSubId.value = row.id; extendDays.value = 30; extendVisible.value = true }
 async function doExtend() { await billingSubApi.extend(extendSubId.value, extendDays.value); ElMessage.success('延期成功'); extendVisible.value = false; fetchData() }
 async function suspend(row) { await billingSubApi.suspend(row.id); ElMessage.success('已暂停'); fetchData() }

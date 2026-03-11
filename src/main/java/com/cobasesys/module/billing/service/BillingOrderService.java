@@ -100,6 +100,7 @@ public class BillingOrderService {
     public BillingDTO.OrderResp confirmPayment(Long orderId, String paymentMethod, String paymentNo) {
         BillingOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+        verifyOrderTenant(order);
         if (order.getPaymentStatus() != 0) {
             throw new BizException(ErrorCode.PARAM_INVALID, "订单状态不允许确认付款");
         }
@@ -123,6 +124,7 @@ public class BillingOrderService {
     public BillingDTO.OrderResp payCallback(String orderNo, String paymentNo, boolean success) {
         BillingOrder order = orderRepository.findByOrderNo(orderNo)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+        verifyOrderTenant(order);
         if (order.getPaymentStatus() != 0) {
             return toOrderResp(order);
         }
@@ -170,6 +172,7 @@ public class BillingOrderService {
         if (order == null) {
             order = orderRepository.findByOrderNo(idOrNo).orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
         }
+        verifyOrderTenant(order);
         return toOrderResp(order);
     }
 
@@ -257,5 +260,12 @@ public class BillingOrderService {
             return ir;
         }).toList());
         return resp;
+    }
+
+    private void verifyOrderTenant(BillingOrder order) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId != null && !tenantId.equals(order.getTenantId())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权访问该订单");
+        }
     }
 }

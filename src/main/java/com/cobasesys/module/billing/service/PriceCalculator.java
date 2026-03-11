@@ -45,7 +45,34 @@ public class PriceCalculator {
             totalDiscount += detail.getDiscountAmount();
         }
 
+        // Order-level discounts (AMOUNT_DISCOUNT / AMOUNT_POINTS_BONUS)
+        long orderSubtotal = totalAmount - totalDiscount;
+        long orderLevelDiscount = 0;
+        long bonusPoints = 0;
+        for (BillingDiscountRule rule : discountRules) {
+            if ("AMOUNT_DISCOUNT".equals(rule.getDiscountType())
+                    && rule.getThresholdAmount() != null && orderSubtotal >= rule.getThresholdAmount()
+                    && rule.getDiscountRate() != null) {
+                long d = orderSubtotal - java.math.BigDecimal.valueOf(orderSubtotal)
+                        .multiply(rule.getDiscountRate()).setScale(0, java.math.RoundingMode.FLOOR).longValue();
+                orderLevelDiscount = Math.max(orderLevelDiscount, d);
+            }
+            if ("AMOUNT_POINTS_BONUS".equals(rule.getDiscountType())
+                    && rule.getThresholdAmount() != null && orderSubtotal >= rule.getThresholdAmount()
+                    && rule.getBonusPoints() != null) {
+                bonusPoints = Math.max(bonusPoints, rule.getBonusPoints());
+            }
+        }
+        totalDiscount += orderLevelDiscount;
+
         List<BillingDTO.GiftPreview> gifts = matchGifts(req.getItems(), giftRules, totalAmount - totalDiscount);
+        if (bonusPoints > 0) {
+            BillingDTO.GiftPreview pointsGift = new BillingDTO.GiftPreview();
+            pointsGift.setGiftType("POINTS");
+            pointsGift.setGiftPoints(bonusPoints);
+            pointsGift.setRuleName("满额送积分");
+            gifts.add(pointsGift);
+        }
 
         long afterDiscount = totalAmount - totalDiscount;
         long pointsDeduct = 0;
