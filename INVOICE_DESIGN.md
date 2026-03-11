@@ -70,9 +70,12 @@ t_invoice_application (开票申请)
 ├── receiver_email      : varchar(128), NOT NULL          -- 接收邮箱
 ├── remark              : varchar(512)                    -- 备注
 │
+│   ── 开票明细方式 ──
+├── item_mode           : varchar(20), default 'DEFAULT'  -- DEFAULT(技术服务费) / FROM_ORDER(从订单带入)
+│
 │   ── 金额 ──
 ├── total_amount        : bigint, NOT NULL                -- 开票总金额(分)
-├── tax_rate            : decimal(5,2)                    -- 税率 (如 0.06 = 6%)
+├── tax_rate            : decimal(5,2), default 0.06      -- 税率 (如 0.06 = 6%)
 ├── tax_amount          : bigint                          -- 税额(分)
 ├── amount_without_tax  : bigint                          -- 不含税金额(分)
 │
@@ -94,13 +97,21 @@ t_invoice_application (开票申请)
 ├── invoice_code        : varchar(30)                     -- 发票代码
 ├── invoice_number      : varchar(20)                     -- 发票号码
 ├── invoice_date        : date                            -- 开票日期
-├── pdf_url             : varchar(512)                    -- 发票PDF下载地址
+├── pdf_url             : varchar(512)                    -- 发票PDF下载地址(数电平台)
+├── pdf_local_path      : varchar(512)                    -- 发票PDF本地/OSS路径(备份)
 ├── api_request_id      : varchar(64)                     -- 数电API请求ID
 ├── api_response        : text                            -- 数电API返回原文
 │
-│   ── 邮件通知 ──
+│   ── 红冲/作废 ──
+├── void_reason         : varchar(512)                    -- 红冲/作废原因
+├── void_time           : datetime                        -- 红冲时间
+├── void_invoice_number : varchar(20)                     -- 红字发票号码
+│
+│   ── 通知 ──
 ├── email_sent          : tinyint, default 0              -- 是否已发送邮件
 ├── email_sent_at       : datetime
+├── sms_sent            : tinyint, default 0              -- 是否已发送短信
+├── sms_sent_at         : datetime
 │
 ├── created_at          : datetime
 └── updated_at          : datetime
@@ -282,14 +293,34 @@ module/invoice/
 | 申请开票 | 选择可开票订单 + 填写开票信息表单 |
 | 我的发票 | 申请列表 + 状态跟踪 + PDF下载 |
 
-## 九、确认清单
+## 九、开票频率控制
 
-- [ ] **数电平台**：确认使用"新时代"数电开票API？是否已有账号和API凭证？
-- [ ] **发票类型**：增值税普通发票 + 增值税专用发票两种是否够用？
-- [ ] **税率**：默认6%是否正确？是否需要支持多税率？
-- [ ] **开票明细**：发票的商品明细从订单项自动生成，商品名称/规格/数量/单价/金额，是否可接受？
-- [ ] **合并开票**：一次申请可关联多个订单合并开票，是否需要？
-- [ ] **红冲/作废**：是否需要在一期实现？
-- [ ] **邮件通知**：开票成功后自动发送邮件（附PDF下载链接），是否还需要短信通知？
-- [ ] **PDF存储**：发票PDF是存储在数电平台还是下载到我方服务器/OSS？
-- [ ] **开票频率**：是否需要限制每个客户的开票频率或最低开票金额？
+每个客户限制开票频率，防止高频恶意申请：
+
+```yaml
+cobasesys:
+  invoice:
+    rate-limit:
+      max-per-day: 5          # 每天最多申请5次
+      min-interval-minutes: 30 # 两次申请间隔至少30分钟
+```
+
+- 提交申请时校验：今日已申请次数 < max-per-day
+- 校验：距上次申请时间 >= min-interval-minutes
+- 不限制最低开票金额
+
+---
+
+## 十、确认清单（全部已确认 ✅）
+
+- [x] **数电平台**：使用新时代数电开票API，扫码登录获取凭证
+- [x] **发票类型**：增值税普通发票 + 增值税专用发票
+- [x] **税率**：默认6%
+- [x] **开票明细**：默认"技术服务费"，财务审核时可选择是否从订单明细带入
+- [x] **合并开票**：支持多个订单合并开一张票
+- [x] **红冲/作废**：一期实现
+- [x] **通知方式**：邮件通知（附PDF链接）+ 腾讯云短信通知
+- [x] **PDF存储**：双存储 — 数电平台原始链接 + 下载到我方服务器/OSS备份
+- [x] **开票频率**：限制每日申请次数和申请间隔，不限最低金额
+
+**所有确认项已通过，可以开始编码。**
