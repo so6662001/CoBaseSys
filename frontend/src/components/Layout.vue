@@ -55,6 +55,13 @@
           <el-menu-item index="/webhooks/logs">推送日志</el-menu-item>
         </el-sub-menu>
 
+        <el-sub-menu index="invoice">
+          <template #title><el-icon><Ticket /></el-icon><span>电子发票</span></template>
+          <el-menu-item index="/invoice/apply">申请开票</el-menu-item>
+          <el-menu-item index="/invoice/review">开票审核</el-menu-item>
+          <el-menu-item index="/invoice/list">发票记录</el-menu-item>
+        </el-sub-menu>
+
         <el-menu-item-group title="计费模块" />
 
         <el-sub-menu index="billing-product">

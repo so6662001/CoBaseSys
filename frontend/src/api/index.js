@@ -115,6 +115,20 @@ export const auditApi = {
   listReconciliationReports: (params) => request.get('/admin/security/reconciliation-reports', { params }),
 }
 
+// Invoice
+export const invoiceApi = {
+  list: (params) => request.get('/admin/invoice/applications', { params }),
+  getById: (id) => request.get(`/admin/invoice/applications/${id}`),
+  approve: (id, data) => request.post(`/admin/invoice/applications/${id}/approve`, data),
+  reject: (id, data) => request.post(`/admin/invoice/applications/${id}/reject`, data),
+  voidInvoice: (id, data) => request.post(`/admin/invoice/applications/${id}/void`, data),
+  resendEmail: (id) => request.post(`/admin/invoice/applications/${id}/resend-email`),
+  statistics: () => request.get('/admin/invoice/applications/statistics'),
+  apply: (data) => request.post('/api/v1/invoice/apply', data),
+  availableOrders: (params) => request.get('/api/v1/invoice/available-orders', { params }),
+  myApplications: (params) => request.get('/api/v1/invoice/my', { params }),
+}
+
 // Billing - Products
 export const billingProductApi = {
   list: (params) => request.get('/admin/billing/products', { params }),

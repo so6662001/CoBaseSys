@@ -18,7 +18,7 @@ import java.util.Map;
 
 @Configuration
 @EnableJpaRepositories(
-        basePackages = "com.cobasesys.module.billing",
+        basePackages = {"com.cobasesys.module.billing", "com.cobasesys.module.invoice"},
         entityManagerFactoryRef = "billingEntityManagerFactory",
         transactionManagerRef = "billingTransactionManager"
 )
@@ -41,7 +41,7 @@ public class BillingDataSourceConfig {
     public LocalContainerEntityManagerFactoryBean billingEntityManagerFactory(
             EntityManagerFactoryBuilder builder, @Qualifier("billingDataSource") DataSource ds) {
         return builder.dataSource(ds)
-                .packages("com.cobasesys.module.billing.entity")
+                .packages("com.cobasesys.module.billing.entity", "com.cobasesys.module.invoice.entity")
                 .persistenceUnit("billing")
                 .properties(Map.of(
                         "hibernate.dialect", "org.hibernate.dialect.MySQLDialect",

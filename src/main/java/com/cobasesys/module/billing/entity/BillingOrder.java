@@ -68,4 +68,7 @@ public class BillingOrder extends BillingBaseEntity {
 
     @Column(name = "status", nullable = false)
     private Integer status = 0;
+
+    @Column(name = "invoice_status")
+    private Integer invoiceStatus = 0;
 }

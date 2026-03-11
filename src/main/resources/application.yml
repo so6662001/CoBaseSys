@@ -90,6 +90,16 @@ cobasesys:
     refresh-expiration-ms: 604800000
     chain-secret: cobasesys-chain-secret-key-32chars!!
     balance-secret: cobasesys-balance-secret-32chars!
+  invoice:
+    api-url: https://api.xsdapi.com/v1/invoice
+    app-key: changeme
+    app-secret: changeme
+    seller-name: "CoBaseSys"
+    seller-tax-no: "91000000000000000X"
+    default-tax-rate: 0.06
+    rate-limit:
+      max-per-day: 5
+      min-interval-minutes: 30
   webhook:
     max-retry: 3
     retry-interval-seconds: 30
