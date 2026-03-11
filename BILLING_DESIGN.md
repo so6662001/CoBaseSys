@@ -449,6 +449,15 @@ t_billing_subscription (客户订阅/已购)
 ├── quantity            : int, default 1                             -- 购买数量（如10个用户）
 ├── usage_quota         : bigint, default 0                          -- 用量配额（按量计费/订阅增量用）
 ├── usage_used          : bigint, default 0                          -- 已用量
+├── usage_unit          : varchar(32)                                -- 用量单位：次/条/GB/TB 等
+│
+│   ── 空间计量（SPACE_RENTAL 模式）──
+├── space_total         : bigint, default 0                          -- 购买总空间（字节）
+├── space_used          : bigint, default 0                          -- 已用空间（字节）
+│
+│   ── 时间计量（冗余便于报表）──
+├── total_days          : int, default 0                             -- 购买总天数
+├── days_used           : int, default 0                             -- 已使用天数（定时任务每日更新）
 │
 │   ── 时间与状态 ──
 ├── status              : varchar(20), NOT NULL
@@ -517,6 +526,72 @@ t_billing_trial (试用记录)
 ├── created_at          : datetime
 └── updated_at          : datetime
   (UK: tenant_id + customer_id + source_type + source_id)            -- 同一客户同一产品只能有一个试用
+```
+
+### 4.10 用量流水表 (`t_billing_usage_ledger`)
+
+按量计费、订阅增量、空间租用等模式下，记录每一笔用量变动的明细账。
+
+```
+t_billing_usage_ledger (用量流水)
+├── id                  : bigint, PK
+├── tenant_id           : bigint, NOT NULL
+├── subscription_id     : bigint, FK -> t_billing_subscription
+├── customer_id         : varchar(64), NOT NULL
+│
+├── action              : varchar(20), NOT NULL                      -- CONSUME:消耗 / RECHARGE:充值(买量) / ADJUST:调整 / RECLAIM:回收
+├── quantity            : bigint, NOT NULL                           -- 本次变动量（正数=增加，负数=消耗）
+├── unit                : varchar(32), NOT NULL                      -- 单位：次/条/GB/MB 等
+├── balance_before      : bigint, NOT NULL                           -- 变动前剩余量
+├── balance_after       : bigint, NOT NULL                           -- 变动后剩余量
+│
+├── unit_price          : bigint, default 0                          -- 本次单价（分）
+├── amount              : bigint, default 0                          -- 本次金额（分）
+│
+├── biz_system          : varchar(64)                                -- 来源系统编码
+├── biz_order_no        : varchar(128)                               -- 外部业务单号
+├── biz_description     : varchar(512)                               -- 使用说明/描述
+├── idempotent_key      : varchar(128), UK                           -- 幂等键
+│
+├── created_at          : datetime
+└── updated_at          : datetime
+  (Index: subscription_id + created_at DESC)
+  (Index: tenant_id + customer_id + created_at DESC)
+```
+
+### 4.11 试用延长审批表 (`t_billing_trial_extend_approval`)
+
+试用延长需要走审批流程：销售员提交 → 主管审批。
+
+```
+t_billing_trial_extend_approval (试用延长审批)
+├── id                  : bigint, PK
+├── tenant_id           : bigint, NOT NULL
+├── trial_id            : bigint, FK -> t_billing_trial
+├── subscription_id     : bigint, FK -> t_billing_subscription
+├── customer_id         : varchar(64), NOT NULL
+├── customer_name       : varchar(128)
+├── source_name         : varchar(200)                               -- 产品/套餐名称
+│
+│   ── 申请信息 ──
+├── extend_days         : int, NOT NULL                              -- 申请延长天数
+├── apply_reason        : varchar(512)                               -- 申请原因
+├── applicant_id        : varchar(64), NOT NULL                      -- 申请人ID（销售员）
+├── applicant_name      : varchar(128)                               -- 申请人姓名
+├── apply_time          : datetime, NOT NULL                         -- 申请时间
+│
+│   ── 审批信息 ──
+├── status              : varchar(20), NOT NULL                      -- PENDING:待审批 / APPROVED:已通过 / REJECTED:已驳回
+├── approver_id         : varchar(64)                                -- 审批人ID（主管）
+├── approver_name       : varchar(128)                               -- 审批人姓名
+├── approve_time        : datetime                                   -- 审批时间
+├── approve_remark      : varchar(512)                               -- 审批意见
+│
+├── created_at          : datetime
+└── updated_at          : datetime
+  (Index: tenant_id + status)
+  (Index: tenant_id + applicant_id + status)
+  (Index: tenant_id + approver_id + status)
 ```
 
 ---
@@ -618,12 +693,23 @@ t_billing_trial (试用记录)
   │   ├→ 附上联系方式和购买链接
   │   └→ 若支持延长试用，提醒中附上 "申请延长试用" 链接
   │
-  ├→ 客户申请延长试用:
+  ├→ 申请延长试用 (需审批):
+  │   ├→ 销售员/客户发起延长申请
   │   ├→ 校验: 产品/套餐是否允许延长试用 (trial_extend_enabled)
   │   ├→ 校验: 累计已延长天数 + 本次申请天数 <= trial_max_extend_days
-  │   ├→ 延长 trial.end_date 和 subscription.end_date
-  │   ├→ 更新 trial.extend_count + 1, trial.total_extend_days += 延长天数
-  │   └→ 发送 Webhook 通知业务系统延长试用
+  │   ├→ 创建审批单 (t_billing_trial_extend_approval, status=PENDING)
+  │   ├→ 通知主管审批 (短信 + 应用内)
+  │   │
+  │   ├→ [主管审批通过]:
+  │   │   ├→ 更新审批单 status=APPROVED
+  │   │   ├→ 延长 trial.end_date 和 subscription.end_date
+  │   │   ├→ 更新 trial.extend_count + 1, trial.total_extend_days += 延长天数
+  │   │   ├→ 发送短信通知客户 "延长试用已批准"
+  │   │   └→ 发送 Webhook 通知业务系统延长试用
+  │   │
+  │   └→ [主管审批驳回]:
+  │       ├→ 更新审批单 status=REJECTED + 驳回原因
+  │       └→ 通知销售员/客户审批结果
   │
   ├→ 试用到期 (包括延长后再次到期):
   │   ├→ 更新试用状态 (status=EXPIRED)
@@ -745,10 +831,25 @@ t_billing_trial (试用记录)
 | POST | `/admin/billing/subscriptions/{id}/suspend` | 暂停订阅 |
 | POST | `/admin/billing/subscriptions/{id}/resume` | 恢复订阅 |
 | **试用管理** | | |
-| GET | `/admin/billing/trials` | 试用列表 |
-| POST | `/admin/billing/trials/{id}/extend` | 后台延长试用 |
+| GET | `/admin/billing/trials` | 试用列表 (支持按状态/客户筛选) |
+| **试用延长审批** | | |
+| POST | `/admin/billing/trial-extend/apply` | 销售员提交延长试用申请 |
+| GET | `/admin/billing/trial-extend/my-applies` | 我的申请列表 (销售员查看) |
+| GET | `/admin/billing/trial-extend/pending` | 待审批列表 (主管查看) |
+| POST | `/admin/billing/trial-extend/{id}/approve` | 审批通过 |
+| POST | `/admin/billing/trial-extend/{id}/reject` | 审批驳回 |
+| GET | `/admin/billing/trial-extend` | 全部审批记录 |
 | **提醒记录** | | |
 | GET | `/admin/billing/reminders` | 提醒记录列表 |
+| **运营报表** | | |
+| GET | `/admin/billing/reports/expiring-subscriptions` | 即将到期的订阅报表 (15天内) |
+| GET | `/admin/billing/reports/expired-subscriptions` | 已到期的订阅报表 |
+| GET | `/admin/billing/reports/expiring-trials` | 即将到期的试用报表 |
+| GET | `/admin/billing/reports/expired-trials` | 已到期的试用报表 |
+| GET | `/admin/billing/reports/subscription-detail/{id}` | 订阅详情报表 (含用量/时间/空间多维度) |
+| GET | `/admin/billing/reports/usage-ledger` | 用量流水明细 (按客户/订阅筛选) |
+| GET | `/admin/billing/reports/revenue-summary` | 收入汇总报表 (按日/周/月) |
+| GET | `/admin/billing/reports/customer-assets/{customerId}` | 客户资产全景 (所有产品/套餐/用量/到期) |
 
 ### 6.2 客户前台 API (Customer)
 
@@ -773,8 +874,11 @@ t_billing_trial (试用记录)
 | POST | `/api/v1/billing/my/subscriptions/{id}/renew` | 发起续费 |
 | **试用** | | |
 | POST | `/api/v1/billing/trial/apply` | 申请试用 |
-| POST | `/api/v1/billing/trial/{id}/extend` | 申请延长试用 |
+| POST | `/api/v1/billing/trial/{id}/extend` | 申请延长试用 (提交审批) |
+| GET | `/api/v1/billing/trial/{id}/extend-status` | 查询延长审批状态 |
 | GET | `/api/v1/billing/my/trials` | 我的试用列表 |
+| **用量明细** | | |
+| GET | `/api/v1/billing/my/usage-ledger/{subscriptionId}` | 查询用量流水明细 |
 | **登录提醒** | | |
 | GET | `/api/v1/billing/my/expiring-alerts` | 获取到期/续费提醒 (登录时调用) |
 
@@ -950,7 +1054,161 @@ POST /api/v1/billing/check/products
 
 ---
 
-## 九、性能设计 (10万+并发)
+## 九、运营报表设计
+
+### 9.1 报表总览
+
+管理后台的报表中心提供多维度的运营数据视图：
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                      报表中心                                 │
+│                                                              │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐│
+│  │ 即将到期    │ │ 已到期     │ │ 即将到期    │ │ 已到期     ││
+│  │ 订阅报表   │ │ 订阅报表   │ │ 试用报表   │ │ 试用报表   ││
+│  │  32 条     │ │  15 条    │ │  8 条     │ │  5 条     ││
+│  └────────────┘ └────────────┘ └────────────┘ └────────────┘│
+│                                                              │
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │                   客户资产全景                             ││
+│  │  搜索客户: [__________] [查询]                            ││
+│  │                                                          ││
+│  │  某某钢铁公司 (C10001)                                    ││
+│  │  ┌──────────────────────────────────────────────────────┐││
+│  │  │ 产品/套餐       │ 收费模式 │ 状态   │ 关键指标        │││
+│  │  ├──────────────────────────────────────────────────────┤││
+│  │  │ 钢贸宝企业版×10  │ 订阅     │ ● 正常 │ 剩余312天/365天│││
+│  │  │ API调用包        │ 按量     │ ● 正常 │ 剩余3420次/5000│││
+│  │  │ 100GB云存储      │ 空间租用 │ ⚠ 即将 │ 已用53GB/100GB ││ │
+│  │  │ 数据报告高级版    │ 买断     │ ● 永久 │ —             │││
+│  │  │ CRM标准版 (试用)  │ 订阅     │ 试用   │ 剩余5天       │││
+│  │  └──────────────────────────────────────────────────────┘││
+│  └──────────────────────────────────────────────────────────┘│
+│                                                              │
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │                   用量流水明细                             ││
+│  │  订阅: API调用包 (SUB20260101001)                         ││
+│  │  购买总量: 5000次  已用: 1580次  剩余: 3420次              ││
+│  │  ┌────────┬──────┬──────┬──────┬──────────────────────┐  ││
+│  │  │ 时间    │ 动作  │ 数量  │ 剩余  │ 说明               │  ││
+│  │  ├────────┼──────┼──────┼──────┼──────────────────────┤  ││
+│  │  │ 03-10  │ 消耗  │ -120  │ 3420 │ 钢贸宝批量查询      │  ││
+│  │  │ 03-09  │ 消耗  │ -85   │ 3540 │ CRM数据同步         │  ││
+│  │  │ 03-01  │ 充值  │ +5000 │ 3625 │ 购买API调用包        │  ││
+│  │  └────────┴──────┴──────┴──────┴──────────────────────┘  ││
+│  └──────────────────────────────────────────────────────────┘│
+│                                                              │
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │                 收入汇总报表                               ││
+│  │  时间范围: [2026-01] ~ [2026-03]  粒度: [月]              ││
+│  │  ┌────────┬────────┬────────┬────────┬────────┐          ││
+│  │  │ 月份    │ 新购收入 │ 续费收入 │ 增量收入 │ 合计    │          ││
+│  │  ├────────┼────────┼────────┼────────┼────────┤          ││
+│  │  │ 2026-01│ 12.5万  │ 8.3万   │ 1.2万   │ 22.0万 │          ││
+│  │  │ 2026-02│ 15.0万  │ 6.7万   │ 2.1万   │ 23.8万 │          ││
+│  │  │ 2026-03│ 10.2万  │ 9.1万   │ 1.8万   │ 21.1万 │          ││
+│  │  └────────┴────────┴────────┴────────┴────────┘          ││
+│  └──────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 9.2 订阅详情报表 — 按收费模式展示不同指标
+
+| 收费模式 | 显示的核心指标 |
+|---------|--------------|
+| **一次性+年服务费** | 购买总天数、已使用天数、剩余天数、年服务费到期日 |
+| **年/季/月订阅** | 购买总天数、已使用天数、剩余天数、当前周期起止 |
+| **按量计费** | 购买总量、已用量、剩余可用量、单位、费用流水明细 |
+| **阶梯累进** | 购买总量、已用量、剩余可用量、当前所在阶梯、费用流水 |
+| **云端租用** | 购买总天数、已使用天数、剩余天数、租用周期 |
+| **空间租用** | 购买总空间、已用空间、剩余空间（GB/TB）、使用率% |
+| **一次性买断** | 购买日期、状态=永久有效 |
+
+### 9.3 订阅详情响应示例
+
+```json
+{
+  "code": 0,
+  "data": {
+    "subscriptionNo": "SUB20260101001",
+    "customerName": "某某钢铁公司",
+    "sourceName": "API调用包",
+    "pricingModel": "USAGE_BASED",
+    "status": "ACTIVE",
+
+    "timeMetrics": {
+      "startDate": "2026-01-01",
+      "endDate": "2026-12-31",
+      "totalDays": 365,
+      "daysUsed": 53,
+      "daysRemaining": 312
+    },
+
+    "usageMetrics": {
+      "unit": "次",
+      "totalQuota": 5000,
+      "used": 1580,
+      "remaining": 3420,
+      "usageRate": "31.6%"
+    },
+
+    "spaceMetrics": null,
+
+    "recentUsageLedger": [
+      {
+        "time": "2026-03-10 14:30:00",
+        "action": "CONSUME",
+        "quantity": -120,
+        "balanceAfter": 3420,
+        "unitPrice": 10,
+        "amount": 1200,
+        "bizSystem": "钢贸宝",
+        "description": "批量查询接口调用"
+      }
+    ]
+  }
+}
+```
+
+### 9.4 空间类订阅详情响应示例
+
+```json
+{
+  "code": 0,
+  "data": {
+    "subscriptionNo": "SUB20260201002",
+    "sourceName": "100GB云存储",
+    "pricingModel": "SPACE_RENTAL",
+    "status": "ACTIVE",
+
+    "timeMetrics": {
+      "startDate": "2026-02-01",
+      "endDate": "2027-01-31",
+      "totalDays": 365,
+      "daysUsed": 20,
+      "daysRemaining": 345
+    },
+
+    "usageMetrics": null,
+
+    "spaceMetrics": {
+      "unit": "GB",
+      "totalSpace": "100 GB",
+      "totalSpaceBytes": 107374182400,
+      "usedSpace": "53.2 GB",
+      "usedSpaceBytes": 57124225843,
+      "remainingSpace": "46.8 GB",
+      "remainingSpaceBytes": 50249956557,
+      "usageRate": "53.2%"
+    }
+  }
+}
+```
+
+---
+
+## 十、性能设计 (10万+并发)
 
 ### 9.1 高并发策略
 
@@ -1016,6 +1274,14 @@ CREATE INDEX idx_order_customer ON t_billing_order(tenant_id, customer_id, creat
 -- 提醒去重
 CREATE INDEX idx_reminder_dedup ON t_billing_renewal_reminder(
     subscription_id, reminder_type, DATE(created_at));
+
+-- 用量流水查询
+CREATE INDEX idx_usage_ledger_sub ON t_billing_usage_ledger(subscription_id, created_at DESC);
+CREATE INDEX idx_usage_ledger_customer ON t_billing_usage_ledger(tenant_id, customer_id, created_at DESC);
+
+-- 试用延长审批
+CREATE INDEX idx_trial_extend_status ON t_billing_trial_extend_approval(tenant_id, status);
+CREATE INDEX idx_trial_extend_approver ON t_billing_trial_extend_approval(tenant_id, approver_id, status);
 ```
 
 ---
@@ -1076,24 +1342,32 @@ module/billing/
 │   ├── BillingOrderItem.java
 │   ├── BillingSubscription.java
 │   ├── BillingTrial.java
+│   ├── BillingTrialExtendApproval.java
+│   ├── BillingUsageLedger.java
 │   └── BillingRenewalReminder.java
 ├── repository/
 │   ├── BillingProductRepository.java
 │   ├── BillingPackageRepository.java
+│   ├── BillingUsageLedgerRepository.java
+│   ├── BillingTrialExtendApprovalRepository.java
 │   ├── ... (每个实体对应)
 │   └── BillingSubscriptionRepository.java
 ├── service/
-│   ├── ProductService.java          // 产品管理
-│   ├── PackageService.java          // 套餐管理
-│   ├── PricingService.java          // 定价方案管理
-│   ├── PriceCalculator.java         // 价格计算引擎 (折扣/赠送/积分)
-│   ├── OrderService.java            // 订单管理 (创建/支付/取消)
-│   ├── SubscriptionService.java     // 订阅管理 (激活/续费/到期)
-│   ├── TrialService.java            // 试用管理
-│   ├── RenewalReminderService.java  // 到期提醒
-│   ├── DiscountEngine.java          // 折扣引擎
-│   ├── GiftEngine.java              // 赠送引擎
-│   └── BillingCheckService.java     // 外部系统到期查询
+│   ├── ProductService.java              // 产品管理
+│   ├── PackageService.java              // 套餐管理
+│   ├── PricingService.java              // 定价方案管理
+│   ├── PriceCalculator.java             // 价格计算引擎 (折扣/赠送/积分)
+│   ├── OrderService.java                // 订单管理 (创建/支付/代客下单)
+│   ├── SubscriptionService.java         // 订阅管理 (激活/续费/到期)
+│   ├── TrialService.java                // 试用管理
+│   ├── TrialExtendApprovalService.java  // 试用延长审批
+│   ├── UsageLedgerService.java          // 用量流水管理
+│   ├── RenewalReminderService.java      // 到期提醒
+│   ├── DiscountEngine.java              // 折扣引擎
+│   ├── GiftEngine.java                  // 赠送引擎
+│   ├── BillingCheckService.java         // 外部系统到期查询
+│   ├── BillingReportService.java        // 运营报表
+│   └── TencentSmsService.java           // 腾讯云短信
 ├── controller/
 │   ├── admin/
 │   │   ├── ProductAdminController.java
@@ -1103,12 +1377,14 @@ module/billing/
 │   │   ├── GiftAdminController.java
 │   │   ├── OrderAdminController.java
 │   │   ├── SubscriptionAdminController.java
+│   │   ├── TrialExtendApprovalController.java  // 试用延长审批
+│   │   ├── ReportAdminController.java          // 运营报表
 │   │   └── ReminderAdminController.java
 │   └── api/
 │       ├── BillingShopController.java       // 客户浏览/购买
 │       ├── BillingOrderController.java      // 客户订单
-│       ├── BillingMyController.java         // 我的订阅/提醒
-│       ├── BillingTrialController.java      // 试用申请
+│       ├── BillingMyController.java         // 我的订阅/提醒/用量
+│       ├── BillingTrialController.java      // 试用申请/延长
 │       └── BillingCheckController.java      // 外部系统查询
 ├── dto/
 │   ├── ProductDTO.java
@@ -1117,9 +1393,13 @@ module/billing/
 │   ├── OrderDTO.java
 │   ├── SubscriptionDTO.java
 │   ├── PriceCalculateDTO.java
-│   └── BillingCheckDTO.java
+│   ├── BillingCheckDTO.java
+│   ├── UsageLedgerDTO.java
+│   ├── TrialExtendDTO.java
+│   └── ReportDTO.java
 ├── scheduler/
-│   └── RenewalReminderScheduler.java  // 到期提醒定时任务
+│   ├── RenewalReminderScheduler.java    // 到期提醒定时任务
+│   └── SubscriptionDaysUpdateScheduler.java  // 每日更新已用天数
 └── event/
     └── BillingEvents.java             // 计费相关事件定义
 ```
@@ -1392,15 +1672,18 @@ CoBaseSys 应用
 
 ### 已确认事项 ✅
 
-- [x] **试用机制**：支持延长试用，产品可配置是否允许延长和最大延长天数
+- [x] **试用机制**：支持延长试用，需销售员提交申请→主管审批通过后生效
 - [x] **短信通道**：使用腾讯云短信平台 (Tencent Cloud SMS)
 - [x] **收费模式**：在原有 5 种基础上新增 2 种（阶梯累进计费 + 一次性买断），共 7 种收费模式
 - [x] **下单方式**：客户自助下单 + 后台代客下单，共用同一套价格引擎
 - [x] **终端适配**：所有功能支持 H5 移动端操作，客户前台采用 Vant 4 移动优先，管理后台 Element Plus 响应式
+- [x] **运营报表**：即将到期/已到期的订阅和试用报表，客户资产全景，用量流水明细，收入汇总
+- [x] **用量流水**：按量/空间/时间计费的订阅分别展示剩余量/已用量/购买量，含明细账
+- [x] **延长审批**：销售员提交延长试用申请→主管审批→通过后自动延长→短信通知客户
 
 ### 待确认事项
 
-- [ ] **数据模型**：12 张核心表的字段设计是否满足需求？是否需要增减？
+- [ ] **数据模型**：14 张核心表的字段设计是否满足需求？是否需要增减？
 - [ ] **赠送规则**：买 N 送产品/套餐/积分三种赠送类型是否够用？
 - [ ] **折扣规则**：产品折扣、满额折扣、满额送积分是否覆盖所有折扣场景？
 - [ ] **积分抵扣**：按比例上限 + 汇率换算的方式是否可接受？
