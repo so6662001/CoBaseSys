@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: cobasesys-test
+  threads:
+    virtual:
+      enabled: false
+  datasource:
+    primary:
+      url: jdbc:h2:mem:testdb_primary;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+      username: sa
+      password:
+      driver-class-name: org.h2.Driver
+      hikari:
+        maximum-pool-size: 5
+        pool-name: TestPrimaryCP
+    billing:
+      url: jdbc:h2:mem:testdb_billing;DB_CLOSE_DELAY=-1;MODE=MySQL
+      username: sa
+      password:
+      driver-class-name: org.h2.Driver
+      hikari:
+        maximum-pool-size: 5
+        pool-name: TestBillingCP
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  flyway:
+    enabled: false
+  mail:
+    host: localhost
+    port: 25
+
+cobasesys:
+  auth:
+    timestamp-tolerance-seconds: 300
+    nonce-expire-seconds: 300
+    admin-token: test-token
+  security:
+    jwt-secret: test-jwt-secret-key-must-be-at-least-32-chars
+    jwt-expiration-ms: 60000
+    refresh-expiration-ms: 300000
+    chain-secret: test-chain-secret-key-32chars!!!!
+    balance-secret: test-balance-secret-32chars!!!!!
+  webhook:
+    max-retry: 1
+    timeout-seconds: 5
+  notification:
+    low-balance-threshold: 1000
+
+logging:
+  level:
+    com.cobasesys: WARN
