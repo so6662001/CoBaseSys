@@ -3,10 +3,10 @@
     <div class="page-header"><h2>发票记录</h2></div>
 
     <el-row :gutter="16" style="margin-bottom:20px" v-if="stats">
-      <el-col :span="6"><el-card shadow="hover"><div style="text-align:center"><div style="font-size:28px;font-weight:700;color:#67c23a">{{ stats.totalIssued }}</div><div style="color:#909399">已开具</div></div></el-card></el-col>
-      <el-col :span="6"><el-card shadow="hover"><div style="text-align:center"><div style="font-size:28px;font-weight:700;color:#e6a23c">{{ stats.totalPending }}</div><div style="color:#909399">待审核</div></div></el-card></el-col>
-      <el-col :span="6"><el-card shadow="hover"><div style="text-align:center"><div style="font-size:28px;font-weight:700;color:#f56c6c">{{ stats.totalRejected }}</div><div style="color:#909399">已驳回</div></div></el-card></el-col>
-      <el-col :span="6"><el-card shadow="hover"><div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#409eff">{{ stats.totalIssuedAmountDisplay || '0.00元' }}</div><div style="color:#909399">累计开票金额</div></div></el-card></el-col>
+      <el-col :xs="12" :sm="6"><el-card shadow="hover"><div style="text-align:center"><div style="font-size:24px;font-weight:700;color:#67c23a">{{ stats.totalIssued }}</div><div style="color:#909399;font-size:12px">已开具</div></div></el-card></el-col>
+      <el-col :xs="12" :sm="6"><el-card shadow="hover"><div style="text-align:center"><div style="font-size:24px;font-weight:700;color:#e6a23c">{{ stats.totalPending }}</div><div style="color:#909399;font-size:12px">待审核</div></div></el-card></el-col>
+      <el-col :xs="12" :sm="6"><el-card shadow="hover"><div style="text-align:center"><div style="font-size:24px;font-weight:700;color:#f56c6c">{{ stats.totalRejected }}</div><div style="color:#909399;font-size:12px">已驳回</div></div></el-card></el-col>
+      <el-col :xs="12" :sm="6"><el-card shadow="hover"><div style="text-align:center"><div style="font-size:18px;font-weight:700;color:#409eff">{{ stats.totalIssuedAmountDisplay || '0.00元' }}</div><div style="color:#909399;font-size:12px">累计金额</div></div></el-card></el-col>
     </el-row>
 
     <el-table :data="list" v-loading="loading" stripe border>

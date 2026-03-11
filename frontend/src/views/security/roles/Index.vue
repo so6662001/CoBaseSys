@@ -3,7 +3,7 @@
     <div class="page-header"><h2>角色与权限</h2></div>
 
     <el-row :gutter="20">
-      <el-col :span="8">
+      <el-col :xs="24" :sm="24" :md="8">
         <h3>系统角色</h3>
         <el-table :data="roles" border stripe size="small">
           <el-table-column prop="id" label="ID" width="50" />
@@ -13,7 +13,7 @@
         </el-table>
       </el-col>
 
-      <el-col :span="16">
+      <el-col :xs="24" :sm="24" :md="16">
         <h3>权限清单</h3>
         <el-table :data="permissions" border stripe size="small">
           <el-table-column prop="id" label="ID" width="50" />

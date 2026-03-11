@@ -10,39 +10,67 @@ html, body, #app {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
 
   h2 {
     margin: 0;
-    font-size: 20px;
+    font-size: 18px;
     color: #303133;
   }
 }
 
 .filter-bar {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
 .card-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .stat-card {
   text-align: center;
   .stat-value {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
     color: #409eff;
   }
   .stat-label {
-    font-size: 13px;
+    font-size: 12px;
     color: #909399;
     margin-top: 4px;
+  }
+}
+
+// 移动端全局样式
+@media (max-width: 767px) {
+  .page-header h2 { font-size: 16px; }
+
+  .el-dialog {
+    --el-dialog-width: 92% !important;
+    margin: 8px auto !important;
+  }
+
+  .el-table {
+    font-size: 12px;
+  }
+
+  .el-descriptions {
+    font-size: 12px;
+  }
+
+  .el-form-item__label {
+    font-size: 13px;
+  }
+
+  .el-card {
+    --el-card-padding: 12px;
   }
 }

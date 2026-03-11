@@ -25,15 +25,15 @@
   <el-dialog v-model="dialogVisible" :title="isEdit?'编辑产品':'新增产品'" width="650px" top="5vh">
     <el-form :model="form" :rules="rules" ref="formRef" label-width="110px">
       <el-row :gutter="16">
-        <el-col :span="12"><el-form-item label="产品编码" prop="productCode"><el-input v-model="form.productCode" :disabled="isEdit" /></el-form-item></el-col>
-        <el-col :span="12"><el-form-item label="产品名称" prop="productName"><el-input v-model="form.productName" /></el-form-item></el-col>
+        <el-col :xs="24" :sm="12"><el-form-item label="产品编码" prop="productCode"><el-input v-model="form.productCode" :disabled="isEdit" /></el-form-item></el-col>
+        <el-col :xs="24" :sm="12"><el-form-item label="产品名称" prop="productName"><el-input v-model="form.productName" /></el-form-item></el-col>
       </el-row>
       <el-row :gutter="16">
-        <el-col :span="12"><el-form-item label="分类"><el-select v-model="form.category" placeholder="选择分类">
+        <el-col :xs="24" :sm="12"><el-form-item label="分类"><el-select v-model="form.category" placeholder="选择分类">
           <el-option value="software" label="软件" /><el-option value="service" label="服务" />
           <el-option value="resource" label="资源" /><el-option value="storage" label="存储" />
         </el-select></el-form-item></el-col>
-        <el-col :span="12"><el-form-item label="收费模式" prop="pricingModel"><el-select v-model="form.pricingModel">
+        <el-col :xs="24" :sm="12"><el-form-item label="收费模式" prop="pricingModel"><el-select v-model="form.pricingModel">
           <el-option v-for="m in pricingModels" :key="m.value" :value="m.value" :label="m.label" />
         </el-select></el-form-item></el-col>
       </el-row>

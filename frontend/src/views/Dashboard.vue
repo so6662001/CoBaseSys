@@ -2,7 +2,7 @@
   <div>
     <h2 style="margin:0 0 24px">控制台</h2>
     <el-row :gutter="20">
-      <el-col :span="6" v-for="item in cards" :key="item.label">
+      <el-col :xs="12" :sm="12" :md="6" v-for="item in cards" :key="item.label">
         <el-card shadow="hover" style="text-align:center;cursor:pointer" @click="$router.push(item.route)">
           <el-icon :size="36" :color="item.color"><component :is="item.icon" /></el-icon>
           <div style="font-size:16px;font-weight:600;margin-top:12px">{{ item.label }}</div>
@@ -12,7 +12,7 @@
     </el-row>
 
     <el-row :gutter="20" style="margin-top:24px">
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12">
         <el-card shadow="never">
           <template #header><span style="font-weight:600">快速入口</span></template>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
@@ -22,7 +22,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12">
         <el-card shadow="never">
           <template #header><span style="font-weight:600">系统信息</span></template>
           <el-descriptions :column="1" border>
