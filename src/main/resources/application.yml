@@ -14,16 +14,24 @@ spring:
       enabled: true
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/cobasesys
-    username: cobasesys
-    password: cobasesys123
-    hikari:
-      maximum-pool-size: 100
-      minimum-idle: 20
-      idle-timeout: 30000
-      max-lifetime: 1800000
-      connection-timeout: 5000
-      pool-name: CoBaseSys-HikariCP
+    primary:
+      url: jdbc:postgresql://localhost:5432/cobasesys
+      username: cobasesys
+      password: cobasesys123
+      driver-class-name: org.postgresql.Driver
+      hikari:
+        maximum-pool-size: 100
+        minimum-idle: 20
+        pool-name: PrimaryHikariCP
+    billing:
+      url: jdbc:mysql://localhost:3306/cobasesys_billing?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      username: cobasesys
+      password: cobasesys123
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 100
+        minimum-idle: 20
+        pool-name: BillingHikariCP
 
   jpa:
     hibernate:
