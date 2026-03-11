@@ -16,9 +16,9 @@
   </CrudTable>
 
   <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑租户' : '新增租户'" width="500px">
-    <el-form :model="form" label-width="90px">
-      <el-form-item label="租户编码" v-if="!isEdit"><el-input v-model="form.tenantCode" /></el-form-item>
-      <el-form-item label="租户名称"><el-input v-model="form.tenantName" /></el-form-item>
+    <el-form :model="form" :rules="rules" ref="formRef" label-width="90px">
+      <el-form-item label="租户编码" prop="tenantCode" v-if="!isEdit"><el-input v-model="form.tenantCode" /></el-form-item>
+      <el-form-item label="租户名称" prop="tenantName"><el-input v-model="form.tenantName" /></el-form-item>
       <el-form-item label="联系人"><el-input v-model="form.contactName" /></el-form-item>
       <el-form-item label="联系电话"><el-input v-model="form.contactPhone" /></el-form-item>
       <el-form-item label="邮箱"><el-input v-model="form.contactEmail" /></el-form-item>
@@ -41,7 +41,12 @@ import CrudTable from '@/components/CrudTable.vue'
 
 const list = ref([]), loading = ref(false), total = ref(0), page = ref(1), pageSize = ref(20)
 const dialogVisible = ref(false), isEdit = ref(false), submitting = ref(false), editId = ref(null)
+const formRef = ref(null)
 const form = reactive({ tenantCode: '', tenantName: '', contactName: '', contactPhone: '', contactEmail: '', status: 1 })
+const rules = {
+  tenantCode: [{ required: true, message: '请输入租户编码', trigger: 'blur' }],
+  tenantName: [{ required: true, message: '请输入租户名称', trigger: 'blur' }],
+}
 
 async function fetchData() {
   loading.value = true
@@ -58,6 +63,7 @@ function openDialog(row) {
 }
 
 async function handleSubmit() {
+  try { await formRef.value.validate() } catch { return }
   submitting.value = true
   try {
     if (isEdit.value) await tenantApi.update(editId.value, form)

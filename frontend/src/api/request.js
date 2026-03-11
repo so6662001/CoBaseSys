@@ -32,6 +32,7 @@ request.interceptors.response.use(
       ElMessage.error('认证失败，请重新登录')
       const app = useAppStore()
       app.logout()
+      window.location.href = '/login'
     } else {
       ElMessage.error(error.response?.data?.message || error.message || '网络错误')
     }

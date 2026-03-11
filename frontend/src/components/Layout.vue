@@ -20,6 +20,7 @@
           <el-menu-item index="/points/actions">积分动作</el-menu-item>
           <el-menu-item index="/points/rules">积分规则</el-menu-item>
           <el-menu-item index="/points/accounts">积分账户</el-menu-item>
+          <el-menu-item index="/points/transactions">积分流水</el-menu-item>
         </el-sub-menu>
 
         <el-sub-menu index="wallet">
@@ -27,6 +28,9 @@
           <el-menu-item index="/wallet/actions">消费动作</el-menu-item>
           <el-menu-item index="/wallet/rules">消费规则</el-menu-item>
           <el-menu-item index="/wallet/promotions">充值促销</el-menu-item>
+          <el-menu-item index="/wallet/accounts">钱包账户</el-menu-item>
+          <el-menu-item index="/wallet/transactions">钱包流水</el-menu-item>
+          <el-menu-item index="/wallet/adjust">手动调账</el-menu-item>
         </el-sub-menu>
 
         <el-sub-menu index="member">

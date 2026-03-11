@@ -28,6 +28,7 @@ export const pointApi = {
   updateRule: (id, data) => request.put(`/admin/points/rules/${id}`, data),
   deleteRule: (id) => request.delete(`/admin/points/rules/${id}`),
   listAccounts: (params) => request.get('/admin/points/accounts', { params }),
+  listTransactions: (params) => request.get('/admin/points/transactions', { params }),
 }
 
 // Wallet
@@ -43,6 +44,8 @@ export const walletApi = {
   listPromotions: (params) => request.get('/admin/wallet/promotions', { params }),
   createPromotion: (data) => request.post('/admin/wallet/promotions', data),
   deletePromotion: (id) => request.delete(`/admin/wallet/promotions/${id}`),
+  listAccounts: (params) => request.get('/admin/wallet/accounts', { params }),
+  listTransactions: (params) => request.get('/admin/wallet/transactions', { params }),
   adjust: (params) => request.post('/admin/wallet/adjust', null, { params }),
 }
 

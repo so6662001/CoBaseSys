@@ -2,6 +2,12 @@
   <CrudTable title="消费动作" :data="list" :loading="loading" :total="total" :page="page" :pageSize="pageSize"
     @create="openDialog()" @edit="openDialog($event)" @delete="handleDelete($event)"
     @page-change="page=$event;fetchData()" @size-change="pageSize=$event;fetchData()">
+    <template #filter>
+      <div class="filter-bar">
+        <el-input v-model="filterSystemId" placeholder="系统ID筛选" style="width:160px" clearable @clear="fetchData" />
+        <el-button type="primary" @click="fetchData">查询</el-button>
+      </div>
+    </template>
     <el-table-column prop="id" label="ID" width="70" />
     <el-table-column prop="systemId" label="系统ID" width="80" />
     <el-table-column prop="actionCode" label="动作编码" width="140" />
@@ -39,12 +45,15 @@ import CrudTable from '@/components/CrudTable.vue'
 
 const list = ref([]), loading = ref(false), total = ref(0), page = ref(1), pageSize = ref(20)
 const dialogVisible = ref(false), isEdit = ref(false), submitting = ref(false), editId = ref(null)
+const filterSystemId = ref('')
 const form = reactive({ systemId: 1, actionCode: '', actionName: '', description: '', status: 1 })
 
 async function fetchData() {
   loading.value = true
   try {
-    const res = await walletApi.listActions({ page: page.value, pageSize: pageSize.value })
+    const params = { page: page.value, pageSize: pageSize.value }
+    if (filterSystemId.value) params.systemId = filterSystemId.value
+    const res = await walletApi.listActions(params)
     list.value = res.data.items; total.value = res.data.total
   } finally { loading.value = false }
 }

@@ -2,6 +2,12 @@
   <CrudTable title="消费规则" :data="list" :loading="loading" :total="total" :page="page" :pageSize="pageSize"
     @create="openDialog()" @edit="openDialog($event)" @delete="handleDelete($event)"
     @page-change="page=$event;fetchData()" @size-change="pageSize=$event;fetchData()">
+    <template #filter>
+      <div class="filter-bar">
+        <el-input v-model="filterActionId" placeholder="动作ID筛选" style="width:160px" clearable @clear="fetchData" />
+        <el-button type="primary" @click="fetchData">查询</el-button>
+      </div>
+    </template>
     <el-table-column prop="id" label="ID" width="70" />
     <el-table-column prop="actionId" label="动作ID" width="80" />
     <el-table-column prop="ruleName" label="规则名称" width="150" />
@@ -63,6 +69,7 @@ import CrudTable from '@/components/CrudTable.vue'
 
 const list = ref([]), loading = ref(false), total = ref(0), page = ref(1), pageSize = ref(20)
 const dialogVisible = ref(false), isEdit = ref(false), submitting = ref(false), editId = ref(null)
+const filterActionId = ref('')
 const form = reactive({ actionId: null, ruleName: '', calcType: 'fixed', calcValue: 0, calcExpression: '',
   unitName: '', freeQuota: 0, minCharge: null, maxCharge: null, priority: 0,
   effectiveFrom: null, effectiveTo: null, status: 1 })
@@ -70,7 +77,9 @@ const form = reactive({ actionId: null, ruleName: '', calcType: 'fixed', calcVal
 async function fetchData() {
   loading.value = true
   try {
-    const res = await walletApi.listRules({ page: page.value, pageSize: pageSize.value })
+    const params = { page: page.value, pageSize: pageSize.value }
+    if (filterActionId.value) params.actionId = filterActionId.value
+    const res = await walletApi.listRules(params)
     list.value = res.data.items; total.value = res.data.total
   } finally { loading.value = false }
 }

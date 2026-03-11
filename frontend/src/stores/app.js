@@ -21,7 +21,11 @@ export const useAppStore = defineStore('app', () => {
 
   function logout() {
     token.value = ''
+    tenantId.value = ''
+    tenantName.value = ''
     localStorage.removeItem('admin_token')
+    localStorage.removeItem('tenant_id')
+    localStorage.removeItem('tenant_name')
   }
 
   function toggleSidebar() {

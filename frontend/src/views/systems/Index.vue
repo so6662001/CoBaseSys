@@ -20,9 +20,9 @@
   </CrudTable>
 
   <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑系统' : '注册系统'" width="550px">
-    <el-form :model="form" label-width="100px">
-      <el-form-item label="系统编码" v-if="!isEdit"><el-input v-model="form.systemCode" /></el-form-item>
-      <el-form-item label="系统名称"><el-input v-model="form.systemName" /></el-form-item>
+    <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
+      <el-form-item label="系统编码" prop="systemCode" v-if="!isEdit"><el-input v-model="form.systemCode" /></el-form-item>
+      <el-form-item label="系统名称" prop="systemName"><el-input v-model="form.systemName" /></el-form-item>
       <el-form-item label="描述"><el-input v-model="form.description" type="textarea" /></el-form-item>
       <el-form-item label="回调地址"><el-input v-model="form.callbackUrl" /></el-form-item>
       <el-form-item label="IP白名单"><el-input v-model="form.ipWhitelist" placeholder="多个IP用逗号分隔" /></el-form-item>
@@ -55,7 +55,12 @@ import CrudTable from '@/components/CrudTable.vue'
 const list = ref([]), loading = ref(false), total = ref(0), page = ref(1), pageSize = ref(20)
 const dialogVisible = ref(false), isEdit = ref(false), submitting = ref(false), editId = ref(null)
 const secretVisible = ref(false), secretInfo = reactive({ appKey: '', appSecret: '' })
+const formRef = ref(null)
 const form = reactive({ systemCode: '', systemName: '', description: '', callbackUrl: '', ipWhitelist: '', rateLimit: 1000, status: 1 })
+const rules = {
+  systemCode: [{ required: true, message: '请输入系统编码', trigger: 'blur' }],
+  systemName: [{ required: true, message: '请输入系统名称', trigger: 'blur' }],
+}
 
 async function fetchData() {
   loading.value = true
@@ -72,6 +77,7 @@ function openDialog(row) {
 }
 
 async function handleSubmit() {
+  try { await formRef.value.validate() } catch { return }
   submitting.value = true
   try {
     if (isEdit.value) {
