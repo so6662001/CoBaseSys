@@ -108,8 +108,15 @@
         </div>
         <div style="display:flex;align-items:center;gap:12px">
           <el-tag type="info">租户: {{ app.tenantName }}</el-tag>
-          <span style="font-size:13px;color:#606266">{{ app.realName || app.username }}</span>
-          <el-button text type="danger" @click="handleLogout">退出</el-button>
+          <el-dropdown>
+            <span style="font-size:13px;color:#606266;cursor:pointer">{{ app.realName || app.username }} <el-icon><ArrowDown /></el-icon></span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="showChangePwd=true">修改密码</el-dropdown-item>
+                <el-dropdown-item divided @click="handleLogout" style="color:#f56c6c">退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </el-header>
 
@@ -118,18 +125,49 @@
       </el-main>
     </el-container>
   </el-container>
+
+  <el-dialog v-model="showChangePwd" title="修改密码" width="400px">
+    <el-form :model="pwdForm" label-width="80px">
+      <el-form-item label="原密码"><el-input v-model="pwdForm.oldPassword" type="password" show-password /></el-form-item>
+      <el-form-item label="新密码"><el-input v-model="pwdForm.newPassword" type="password" show-password placeholder="至少8位，需包含字母和数字" /></el-form-item>
+      <el-form-item label="确认密码"><el-input v-model="pwdForm.confirmPassword" type="password" show-password /></el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="showChangePwd=false">取消</el-button>
+      <el-button type="primary" @click="doChangePwd">确认修改</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
+import { authApi } from '@/api'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const app = useAppStore()
+const showChangePwd = ref(false)
+const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 
-function handleLogout() {
+async function handleLogout() {
+  try { if (app.userId) await authApi.logout(app.userId) } catch {}
   app.logout()
   router.push('/login')
+}
+
+async function doChangePwd() {
+  if (!pwdForm.oldPassword || !pwdForm.newPassword) { ElMessage.warning('请填写完整'); return }
+  if (pwdForm.newPassword !== pwdForm.confirmPassword) { ElMessage.warning('两次密码不一致'); return }
+  if (pwdForm.newPassword.length < 8) { ElMessage.warning('密码至少8位'); return }
+  try {
+    await authApi.changePassword(app.userId, pwdForm.oldPassword, pwdForm.newPassword)
+    ElMessage.success('密码已修改，请重新登录')
+    showChangePwd.value = false
+    app.logout()
+    router.push('/login')
+  } catch {}
 }
 </script>
 

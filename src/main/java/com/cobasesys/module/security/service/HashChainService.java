@@ -16,7 +16,7 @@ public class HashChainService {
     private String balanceSecret;
 
     public String computeDataHash(String... fields) {
-        return SignatureUtil.md5(String.join("|", fields));
+        return SignatureUtil.hmacSha256("data-hash-key", String.join("|", fields));
     }
 
     public String computeChainHash(String dataHash, String prevHash) {

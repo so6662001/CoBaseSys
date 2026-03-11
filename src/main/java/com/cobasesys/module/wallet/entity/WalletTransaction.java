@@ -58,4 +58,13 @@ public class WalletTransaction extends TenantEntity {
 
     @Column(name = "idempotent_key", nullable = false, unique = true, length = 128)
     private String idempotentKey;
+
+    @Column(name = "data_hash", length = 64)
+    private String dataHash = "";
+
+    @Column(name = "prev_hash", length = 64)
+    private String prevHash = "";
+
+    @Column(name = "chain_hash", length = 64)
+    private String chainHash = "";
 }

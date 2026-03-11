@@ -7,10 +7,10 @@
       </div>
       <el-form :model="form" :rules="rules" ref="formRef" @submit.prevent="handleLogin">
         <el-form-item prop="username">
-          <el-input v-model="form.username" placeholder="用户名" size="large" prefix-icon="User" />
+          <el-input v-model="form.username" placeholder="用户名" size="large" prefix-icon="User" autocomplete="username" />
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="form.password" placeholder="密码" size="large" prefix-icon="Lock" type="password" show-password @keyup.enter="handleLogin" />
+          <el-input v-model="form.password" placeholder="密码" size="large" prefix-icon="Lock" type="password" show-password autocomplete="current-password" @keyup.enter="handleLogin" />
         </el-form-item>
         <el-form-item>
           <el-input v-model="form.tenantId" placeholder="租户ID (默认: 1)" size="large" prefix-icon="OfficeBuilding" />
@@ -55,6 +55,7 @@ async function handleLogin() {
     router.push('/dashboard')
   } catch (e) {
     errorMsg.value = e.response?.data?.message || e.message || '登录失败'
+    form.password = ''
   } finally {
     loading.value = false
   }

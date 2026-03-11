@@ -37,7 +37,13 @@ public class AdminAuthFilter implements Filter {
             return;
         }
 
-        if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) {
+        // Security headers
+        httpResponse.setHeader("X-Content-Type-Options", "nosniff");
+        httpResponse.setHeader("X-Frame-Options", "DENY");
+        httpResponse.setHeader("X-XSS-Protection", "1; mode=block");
+
+        String normalizedPath = path.replaceAll("/+", "/");
+        if (PUBLIC_PATHS.stream().anyMatch(p -> normalizedPath.equals(p))) {
             chain.doFilter(request, response);
             return;
         }
@@ -48,9 +54,19 @@ public class AdminAuthFilter implements Filter {
         }
 
         if (!StringUtils.hasText(token) || !jwtService.isValid(token)) {
-            httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            httpResponse.setContentType("application/json;charset=UTF-8");
-            httpResponse.getWriter().write("{\"code\":10002,\"message\":\"管理员认证失败，请重新登录\"}");
+            sendUnauthorized(httpResponse, "管理员认证失败，请重新登录");
+            return;
+        }
+
+        // Reject refresh tokens used as access tokens
+        try {
+            var claims = jwtService.parseToken(token);
+            if ("refresh".equals(claims.get("type"))) {
+                sendUnauthorized(httpResponse, "不能使用 RefreshToken 访问接口");
+                return;
+            }
+        } catch (Exception e) {
+            sendUnauthorized(httpResponse, "Token解析失败");
             return;
         }
 
@@ -59,5 +75,11 @@ public class AdminAuthFilter implements Filter {
         httpRequest.setAttribute("adminPermissions", jwtService.getPermissions(token));
 
         chain.doFilter(request, response);
+    }
+
+    private void sendUnauthorized(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"code\":10002,\"message\":\"" + message + "\"}");
     }
 }

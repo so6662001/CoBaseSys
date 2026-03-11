@@ -41,6 +41,15 @@ public class AuthController {
         return ApiResponse.ok();
     }
 
+    @PostMapping("/change-password")
+    @Operation(summary = "修改密码")
+    public ApiResponse<Void> changePassword(@RequestParam Long userId,
+                                              @RequestParam String oldPassword,
+                                              @RequestParam String newPassword) {
+        authService.changePassword(userId, oldPassword, newPassword);
+        return ApiResponse.ok();
+    }
+
     @PostMapping("/mfa/send")
     @Operation(summary = "发送MFA验证码")
     public ApiResponse<String> sendMfaCode(@RequestParam Long userId) {

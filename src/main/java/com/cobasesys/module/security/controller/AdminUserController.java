@@ -6,6 +6,8 @@ import com.cobasesys.common.model.ApiResponse;
 import com.cobasesys.common.model.PageResult;
 import com.cobasesys.module.security.entity.*;
 import com.cobasesys.module.security.repository.*;
+import com.cobasesys.module.security.service.AdminAuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
@@ -45,6 +47,7 @@ public class AdminUserController {
         if (userRepository.existsByUsername(req.getUsername())) {
             throw new BizException(ErrorCode.PARAM_INVALID, "用户名已存在");
         }
+        AdminAuthService.validatePasswordStrength(req.getPassword());
         AdminUser user = new AdminUser();
         user.setUsername(req.getUsername());
         user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
@@ -66,6 +69,7 @@ public class AdminUserController {
     @PostMapping("/users/{id}/reset-password")
     @Operation(summary = "重置密码")
     public ApiResponse<Void> resetPassword(@PathVariable Long id, @RequestParam String newPassword) {
+        AdminAuthService.validatePasswordStrength(newPassword);
         AdminUser user = userRepository.findById(id).orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setLoginFailCount(0);
@@ -76,7 +80,10 @@ public class AdminUserController {
 
     @DeleteMapping("/users/{id}")
     @Operation(summary = "删除管理员")
-    public ApiResponse<Void> deleteUser(@PathVariable Long id) {
+    public ApiResponse<Void> deleteUser(@PathVariable Long id, HttpServletRequest request) {
+        if (id == 1L) throw new BizException(ErrorCode.FORBIDDEN, "不能删除超级管理员");
+        Long currentUserId = (Long) request.getAttribute("adminUserId");
+        if (id.equals(currentUserId)) throw new BizException(ErrorCode.FORBIDDEN, "不能删除自己的账号");
         userRepository.deleteById(id); return ApiResponse.ok();
     }
 

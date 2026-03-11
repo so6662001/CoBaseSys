@@ -32,6 +32,9 @@ public class WalletAccount extends TenantEntity {
     @Column(name = "frozen", nullable = false)
     private Long frozen = 0L;
 
+    @Column(name = "balance_digest", length = 64)
+    private String balanceDigest = "";
+
     @Version
     @Column(name = "version", nullable = false)
     private Long version = 0L;

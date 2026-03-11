@@ -1,6 +1,7 @@
 package com.cobasesys.module.security.entity;
 
 import com.cobasesys.common.model.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,6 +17,7 @@ public class AdminUser extends BaseEntity {
     @Column(name = "username", nullable = false, unique = true, length = 64)
     private String username;
 
+    @JsonIgnore
     @Column(name = "password_hash", nullable = false, length = 256)
     private String passwordHash;
 
@@ -31,6 +33,7 @@ public class AdminUser extends BaseEntity {
     @Column(name = "mfa_enabled", nullable = false)
     private Integer mfaEnabled = 0;
 
+    @JsonIgnore
     @Column(name = "mfa_secret", length = 128)
     private String mfaSecret;
 

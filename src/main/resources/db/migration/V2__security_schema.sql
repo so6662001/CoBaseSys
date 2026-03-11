@@ -172,3 +172,23 @@ INSERT INTO t_admin_permission (permission_code, permission_name, module, action
 -- 超级管理员拥有全部权限
 INSERT INTO t_admin_role_permission (role_id, permission_id)
 SELECT 1, id FROM t_admin_permission;
+
+-- 审计日志表保护：禁止修改和删除
+CREATE OR REPLACE FUNCTION prevent_audit_modification() RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'SECURITY: Audit log records cannot be modified or deleted';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_audit_no_update BEFORE UPDATE ON t_audit_log
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
+
+CREATE TRIGGER trg_audit_no_delete BEFORE DELETE ON t_audit_log
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
+
+-- 对账报告表保护
+CREATE TRIGGER trg_reconciliation_no_update BEFORE UPDATE ON t_reconciliation_report
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
+
+CREATE TRIGGER trg_reconciliation_no_delete BEFORE DELETE ON t_reconciliation_report
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();

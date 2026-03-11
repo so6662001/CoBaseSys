@@ -88,6 +88,7 @@ export const authApi = {
   logout: (userId) => request.post('/admin/auth/logout', null, { params: { userId } }),
   sendMfaCode: (userId) => request.post('/admin/auth/mfa/send', null, { params: { userId } }),
   verifyMfaCode: (userId, code) => request.post('/admin/auth/mfa/verify', null, { params: { userId, code } }),
+  changePassword: (userId, oldPassword, newPassword) => request.post('/admin/auth/change-password', null, { params: { userId, oldPassword, newPassword } }),
 }
 
 // Security - Admin Users

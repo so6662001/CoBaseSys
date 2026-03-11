@@ -33,8 +33,10 @@ public class AuditAspect {
         String operatorName = "system";
         String operatorIp = "";
         if (request != null) {
-            operatorId = request.getHeader("X-Operator-Id") != null ? request.getHeader("X-Operator-Id") : "admin";
-            operatorName = request.getHeader("X-Operator-Name") != null ? request.getHeader("X-Operator-Name") : "admin";
+            Object uid = request.getAttribute("adminUserId");
+            Object uname = request.getAttribute("adminUsername");
+            operatorId = uid != null ? uid.toString() : "system";
+            operatorName = uname != null ? uname.toString() : "system";
             operatorIp = request.getRemoteAddr();
         }
 

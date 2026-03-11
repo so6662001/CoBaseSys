@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -29,6 +30,7 @@ public class AdminAuthService {
     private final AdminLoginLogRepository loginLogRepository;
     private final JwtService jwtService;
     private final StringRedisTemplate redisTemplate;
+    private final AnomalyDetector anomalyDetector;
 
     private static final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private static final int MAX_FAIL_COUNT = 5;
@@ -39,6 +41,8 @@ public class AdminAuthService {
         AdminUser user = userRepository.findByUsername(username).orElse(null);
 
         if (user == null) {
+            passwordEncoder.matches(password, "$2a$10$dummyhashtopreventtimingattacks000000000000000000000");
+            anomalyDetector.checkAdminLoginFailure(username, ip);
             saveLoginLog(null, username, ip, userAgent, "FAIL", "用户不存在");
             throw new BizException(ErrorCode.UNAUTHORIZED, "用户名或密码错误");
         }
@@ -56,6 +60,7 @@ public class AdminAuthService {
                 log.warn("Admin user {} locked after {} failed attempts", username, MAX_FAIL_COUNT);
             }
             userRepository.save(user);
+            anomalyDetector.checkAdminLoginFailure(username, ip);
             saveLoginLog(user.getId(), username, ip, userAgent, "FAIL", "密码错误");
             throw new BizException(ErrorCode.UNAUTHORIZED, "用户名或密码错误");
         }
@@ -126,10 +131,36 @@ public class AdminAuthService {
         return false;
     }
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     public String generateMfaCode(Long userId) {
-        String code = String.format("%06d", new Random().nextInt(1000000));
+        String code = String.format("%06d", SECURE_RANDOM.nextInt(1000000));
         redisTemplate.opsForValue().set("admin:mfa:" + userId, code, Duration.ofMinutes(5));
         return code;
+    }
+
+    @Transactional
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        AdminUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND));
+        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "原密码错误");
+        }
+        validatePasswordStrength(newPassword);
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        redisTemplate.delete("admin:refresh:" + userId);
+    }
+
+    public static void validatePasswordStrength(String password) {
+        if (password == null || password.length() < 8) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "密码长度不能少于8位");
+        }
+        boolean hasLetter = password.chars().anyMatch(Character::isLetter);
+        boolean hasDigit = password.chars().anyMatch(Character::isDigit);
+        if (!hasLetter || !hasDigit) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "密码必须包含字母和数字");
+        }
     }
 
     public List<String> getUserPermissions(Long userId) {
