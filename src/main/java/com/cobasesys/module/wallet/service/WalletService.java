@@ -331,6 +331,21 @@ public class WalletService {
         return toRuleResponse(rule);
     }
 
+    @Transactional
+    public void deleteAction(Long id) {
+        actionRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void deleteRule(Long id) {
+        ruleRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void deletePromotion(Long id) {
+        promotionRepository.deleteById(id);
+    }
+
     public PageResult<WalletDTO.RuleResponse> listRules(Long actionId, Pageable pageable) {
         Page<ConsumeRule> page = actionId != null
                 ? ruleRepository.findByActionId(actionId, pageable)

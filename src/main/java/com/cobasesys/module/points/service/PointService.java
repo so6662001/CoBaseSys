@@ -262,6 +262,16 @@ public class PointService {
         return toRuleResponse(rule);
     }
 
+    @Transactional
+    public void deleteAction(Long id) {
+        actionRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void deleteRule(Long id) {
+        ruleRepository.deleteById(id);
+    }
+
     public PageResult<PointDTO.RuleResponse> listRules(Long actionId, Pageable pageable) {
         Page<PointRule> page = actionId != null
                 ? ruleRepository.findByActionId(actionId, pageable)

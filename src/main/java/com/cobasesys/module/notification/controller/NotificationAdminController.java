@@ -43,6 +43,13 @@ public class NotificationAdminController {
         return ApiResponse.ok(notificationService.listTemplates(PageRequest.of(page - 1, pageSize)));
     }
 
+    @Operation(summary = "删除通知模板")
+    @DeleteMapping("/templates/{id}")
+    public ApiResponse<Void> deleteTemplate(@PathVariable Long id) {
+        notificationService.deleteTemplate(id);
+        return ApiResponse.ok();
+    }
+
     // ===== Rules =====
 
     @Operation(summary = "创建通知规则")
@@ -65,6 +72,13 @@ public class NotificationAdminController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         return ApiResponse.ok(notificationService.listRules(PageRequest.of(page - 1, pageSize)));
+    }
+
+    @Operation(summary = "删除通知规则")
+    @DeleteMapping("/rules/{id}")
+    public ApiResponse<Void> deleteRule(@PathVariable Long id) {
+        notificationService.deleteRule(id);
+        return ApiResponse.ok();
     }
 
     // ===== Records =====

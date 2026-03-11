@@ -233,6 +233,16 @@ public class NotificationService {
         return PageResult.from(page.map(this::toRuleResponse));
     }
 
+    @Transactional
+    public void deleteTemplate(Long id) {
+        templateRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void deleteRule(Long id) {
+        ruleRepository.deleteById(id);
+    }
+
     public PageResult<NotificationDTO.RecordResponse> listRecords(String userId, Pageable pageable) {
         Long tenantId = TenantContext.requireTenantId();
         Page<NotificationRecord> page = userId != null

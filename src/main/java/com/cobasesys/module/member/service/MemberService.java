@@ -64,6 +64,11 @@ public class MemberService {
         return PageResult.from(page.map(this::toLevelResponse));
     }
 
+    @Transactional
+    public void deleteLevel(Long id) {
+        levelRepository.deleteById(id);
+    }
+
     public MemberDTO.UserMemberResponse getUserMember(Long tenantId, String userId) {
         UserMember userMember = userMemberRepository.findByTenantIdAndUserId(tenantId, userId)
                 .orElse(null);

@@ -42,6 +42,13 @@ public class MemberAdminController {
         return ApiResponse.ok(memberService.listLevels(PageRequest.of(page - 1, pageSize)));
     }
 
+    @Operation(summary = "删除会员等级")
+    @DeleteMapping("/levels/{id}")
+    public ApiResponse<Void> deleteLevel(@PathVariable Long id) {
+        memberService.deleteLevel(id);
+        return ApiResponse.ok();
+    }
+
     @Operation(summary = "查询用户会员信息")
     @GetMapping("/users/{userId}")
     public ApiResponse<MemberDTO.UserMemberResponse> getUserMember(@PathVariable String userId) {

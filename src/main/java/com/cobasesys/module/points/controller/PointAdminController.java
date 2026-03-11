@@ -44,6 +44,13 @@ public class PointAdminController {
         return ApiResponse.ok(pointService.listActions(systemId, PageRequest.of(page - 1, pageSize)));
     }
 
+    @Operation(summary = "删除积分动作")
+    @DeleteMapping("/actions/{id}")
+    public ApiResponse<Void> deleteAction(@PathVariable Long id) {
+        pointService.deleteAction(id);
+        return ApiResponse.ok();
+    }
+
     // ===== Rules =====
 
     @Operation(summary = "创建积分规则")
@@ -67,6 +74,13 @@ public class PointAdminController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         return ApiResponse.ok(pointService.listRules(actionId, PageRequest.of(page - 1, pageSize)));
+    }
+
+    @Operation(summary = "删除积分规则")
+    @DeleteMapping("/rules/{id}")
+    public ApiResponse<Void> deleteRule(@PathVariable Long id) {
+        pointService.deleteRule(id);
+        return ApiResponse.ok();
     }
 
     // ===== Accounts =====

@@ -45,6 +45,13 @@ public class WalletAdminController {
         return ApiResponse.ok(walletService.listActions(systemId, PageRequest.of(page - 1, pageSize)));
     }
 
+    @Operation(summary = "删除消费动作")
+    @DeleteMapping("/actions/{id}")
+    public ApiResponse<Void> deleteAction(@PathVariable Long id) {
+        walletService.deleteAction(id);
+        return ApiResponse.ok();
+    }
+
     // ===== Rules =====
 
     @Operation(summary = "创建消费规则")
@@ -70,6 +77,13 @@ public class WalletAdminController {
         return ApiResponse.ok(walletService.listRules(actionId, PageRequest.of(page - 1, pageSize)));
     }
 
+    @Operation(summary = "删除消费规则")
+    @DeleteMapping("/rules/{id}")
+    public ApiResponse<Void> deleteRule(@PathVariable Long id) {
+        walletService.deleteRule(id);
+        return ApiResponse.ok();
+    }
+
     // ===== Promotions =====
 
     @Operation(summary = "创建充值促销")
@@ -85,6 +99,13 @@ public class WalletAdminController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         return ApiResponse.ok(walletService.listPromotions(PageRequest.of(page - 1, pageSize)));
+    }
+
+    @Operation(summary = "删除充值促销")
+    @DeleteMapping("/promotions/{id}")
+    public ApiResponse<Void> deletePromotion(@PathVariable Long id) {
+        walletService.deletePromotion(id);
+        return ApiResponse.ok();
     }
 
     // ===== Manual Adjust =====
