@@ -14,6 +14,7 @@ import com.cobasesys.module.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +32,7 @@ public class MemberService {
 
     private final MemberLevelRepository levelRepository;
     private final UserMemberRepository userMemberRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public MemberDTO.LevelResponse createLevel(MemberDTO.LevelCreateRequest request) {
@@ -174,10 +176,15 @@ public class MemberService {
             log.info("User {} upgraded to level {} ({})", userId, bestLevel.getLevelCode(), bestLevel.getLevelName());
             userMember.setLevelId(bestLevel.getId());
             userMember.setLevelUpdatedAt(LocalDateTime.now());
+            eventPublisher.publishEvent(new MemberUpgradeEvent(this, tenantId, userId,
+                    bestLevel.getLevelCode(), bestLevel.getLevelName(), bestLevel.getLevelRank()));
         }
 
         userMemberRepository.save(userMember);
     }
+
+    public record MemberUpgradeEvent(Object source, Long tenantId, String userId,
+                                      String levelCode, String levelName, int levelRank) {}
 
     private MemberDTO.LevelResponse toLevelResponse(MemberLevel level) {
         MemberDTO.LevelResponse resp = new MemberDTO.LevelResponse();

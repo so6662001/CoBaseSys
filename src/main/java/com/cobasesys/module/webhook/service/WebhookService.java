@@ -3,6 +3,7 @@ package com.cobasesys.module.webhook.service;
 import com.cobasesys.common.model.PageResult;
 import com.cobasesys.common.tenant.TenantContext;
 import com.cobasesys.common.util.SignatureUtil;
+import com.cobasesys.module.member.service.MemberService;
 import com.cobasesys.module.points.service.PointService;
 import com.cobasesys.module.wallet.service.WalletService;
 import com.cobasesys.module.webhook.dto.WebhookDTO;
@@ -74,6 +75,21 @@ public class WebhookService {
                 "timestamp", System.currentTimeMillis()
         );
         dispatch(event.tenantId(), eventType, payload);
+    }
+
+    @Async("webhookExecutor")
+    @EventListener
+    public void onMemberUpgrade(MemberService.MemberUpgradeEvent event) {
+        Map<String, Object> payload = Map.of(
+                "eventType", "member.upgraded",
+                "tenantId", event.tenantId(),
+                "userId", event.userId(),
+                "levelCode", event.levelCode(),
+                "levelName", event.levelName(),
+                "levelRank", event.levelRank(),
+                "timestamp", System.currentTimeMillis()
+        );
+        dispatch(event.tenantId(), "member.upgraded", payload);
     }
 
     // ==================== Core Logic ====================

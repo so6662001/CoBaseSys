@@ -48,6 +48,24 @@ public class PointApiController {
         return ApiResponse.ok(pointService.freeze(system, body));
     }
 
+    @Operation(summary = "解冻积分")
+    @PostMapping("/unfreeze")
+    public ApiResponse<PointDTO.TransactionResult> unfreeze(
+            HttpServletRequest request,
+            @Valid @RequestBody PointDTO.FreezeRequest body) {
+        ExternalSystem system = (ExternalSystem) request.getAttribute("currentSystem");
+        return ApiResponse.ok(pointService.unfreeze(system, body));
+    }
+
+    @Operation(summary = "预校验规则")
+    @PostMapping("/check-rule")
+    public ApiResponse<PointDTO.TransactionResult> checkRule(
+            HttpServletRequest request,
+            @Valid @RequestBody PointDTO.EarnRequest body) {
+        ExternalSystem system = (ExternalSystem) request.getAttribute("currentSystem");
+        return ApiResponse.ok(pointService.checkRule(system, body));
+    }
+
     @Operation(summary = "查询积分余额")
     @GetMapping("/balance/{userId}")
     public ApiResponse<PointDTO.BalanceResponse> balance(@PathVariable String userId) {

@@ -53,6 +53,15 @@ public class WalletApiController {
         return ApiResponse.ok(walletService.freezeBalance(system, body));
     }
 
+    @Operation(summary = "解冻金额")
+    @PostMapping("/unfreeze")
+    public ApiResponse<WalletDTO.TransactionResult> unfreeze(
+            HttpServletRequest request,
+            @Valid @RequestBody WalletDTO.FreezeRequest body) {
+        ExternalSystem system = (ExternalSystem) request.getAttribute("currentSystem");
+        return ApiResponse.ok(walletService.unfreezeBalance(system, body));
+    }
+
     @Operation(summary = "退款")
     @PostMapping("/refund")
     public ApiResponse<WalletDTO.TransactionResult> refund(
@@ -60,6 +69,12 @@ public class WalletApiController {
             @Valid @RequestBody WalletDTO.RefundRequest body) {
         ExternalSystem system = (ExternalSystem) request.getAttribute("currentSystem");
         return ApiResponse.ok(walletService.refund(system, body));
+    }
+
+    @Operation(summary = "查询充值订单")
+    @GetMapping("/recharge/{orderNo}")
+    public ApiResponse<WalletDTO.RechargeOrderResponse> getRechargeOrder(@PathVariable String orderNo) {
+        return ApiResponse.ok(walletService.getRechargeOrder(orderNo));
     }
 
     @Operation(summary = "查询余额")

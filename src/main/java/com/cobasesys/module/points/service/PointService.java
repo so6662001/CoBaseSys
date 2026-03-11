@@ -176,6 +176,58 @@ public class PointService {
         return result;
     }
 
+    @Transactional
+    public PointDTO.TransactionResult unfreeze(ExternalSystem system, PointDTO.FreezeRequest request) {
+        Long tenantId = system.getTenantId();
+        PointAccount account = accountRepository.findByTenantIdAndUserId(tenantId, request.getUserId())
+                .orElseThrow(() -> new BizException(ErrorCode.POINT_ACCOUNT_NOT_FOUND));
+
+        if (account.getFrozen() < request.getPoints()) {
+            throw new BizException(ErrorCode.POINT_BALANCE_INSUFFICIENT, "冻结积分不足");
+        }
+
+        int updated = accountRepository.unfreezePoints(account.getId(), request.getPoints(), account.getVersion());
+        if (updated == 0) throw new BizException(ErrorCode.SYSTEM_ERROR, "并发冲突，请重试");
+
+        PointTransaction tx = new PointTransaction();
+        tx.setTenantId(tenantId);
+        tx.setTransactionNo(IdGenerator.pointTransactionNo());
+        tx.setAccountId(account.getId());
+        tx.setSystemId(system.getId());
+        tx.setActionId(0L);
+        tx.setDirection(0);
+        tx.setPoints(request.getPoints());
+        tx.setBalanceBefore(account.getBalance());
+        tx.setBalanceAfter(account.getBalance() + request.getPoints());
+        tx.setBizOrderNo(request.getBizOrderNo());
+        tx.setRemark("解冻积分: " + (request.getRemark() != null ? request.getRemark() : ""));
+        tx.setIdempotentKey(system.getId() + ":unfreeze:" + request.getBizOrderNo());
+        transactionRepository.save(tx);
+
+        PointDTO.TransactionResult result = new PointDTO.TransactionResult();
+        result.setTransactionNo(tx.getTransactionNo());
+        result.setPoints(request.getPoints());
+        result.setBalance(account.getBalance() + request.getPoints());
+        return result;
+    }
+
+    public PointDTO.TransactionResult checkRule(ExternalSystem system, PointDTO.EarnRequest request) {
+        PointAction action = actionRepository.findBySystemIdAndActionCode(system.getId(), request.getActionCode())
+                .orElseThrow(() -> new BizException(ErrorCode.POINT_ACTION_NOT_FOUND));
+        if (action.getStatus() != 1) throw new BizException(ErrorCode.POINT_ACTION_DISABLED);
+
+        List<PointRule> rules = ruleRepository.findActiveRules(action.getId(), LocalDateTime.now());
+        if (rules.isEmpty()) throw new BizException(ErrorCode.POINT_RULE_NOT_FOUND);
+        PointRule rule = rules.get(0);
+
+        long points = ruleEngine.calculate(rule, request.getBizAmount());
+
+        PointDTO.TransactionResult result = new PointDTO.TransactionResult();
+        result.setPoints(points);
+        result.setRuleName(rule.getRuleName());
+        return result;
+    }
+
     public PointDTO.BalanceResponse getBalance(Long tenantId, String userId) {
         PointAccount account = accountRepository.findByTenantIdAndUserId(tenantId, userId)
                 .orElseThrow(() -> new BizException(ErrorCode.POINT_ACCOUNT_NOT_FOUND));
@@ -291,6 +343,16 @@ public class PointService {
             resp.setTotalConsumed(a.getTotalConsumed());
             return resp;
         }));
+    }
+
+    public PageResult<PointDTO.TransactionResponse> listAllTransactions(Pageable pageable) {
+        Long tenantId = TenantContext.requireTenantId();
+        Page<PointTransaction> txPage = transactionRepository
+                .findByTenantIdOrderByCreatedAtDesc(tenantId, pageable);
+        List<PointDTO.TransactionResponse> items = txPage.getContent().stream()
+                .map(this::toTransactionResponse).toList();
+        return new PageResult<>(txPage.getTotalElements(), pageable.getPageNumber() + 1,
+                pageable.getPageSize(), items);
     }
 
     // ==================== Helpers ====================

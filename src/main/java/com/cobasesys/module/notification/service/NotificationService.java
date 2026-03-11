@@ -9,6 +9,7 @@ import com.cobasesys.module.notification.entity.NotificationTemplate;
 import com.cobasesys.module.notification.repository.NotificationRecordRepository;
 import com.cobasesys.module.notification.repository.NotificationRuleRepository;
 import com.cobasesys.module.notification.repository.NotificationTemplateRepository;
+import com.cobasesys.module.member.service.MemberService;
 import com.cobasesys.module.points.service.PointService;
 import com.cobasesys.module.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
@@ -64,7 +65,13 @@ public class NotificationService {
     @Async("notificationExecutor")
     @EventListener
     public void onPointChange(PointService.PointChangeEvent event) {
-        // Currently no automatic point notification triggers; can be extended
+    }
+
+    @Async("notificationExecutor")
+    @EventListener
+    public void onMemberUpgrade(MemberService.MemberUpgradeEvent event) {
+        triggerNotification(event.tenantId(), event.userId(), "level_upgrade",
+                Map.of("levelName", event.levelName(), "levelCode", event.levelCode()));
     }
 
     // ==================== Core Logic ====================

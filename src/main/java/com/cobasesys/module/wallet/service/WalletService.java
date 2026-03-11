@@ -226,6 +226,42 @@ public class WalletService {
         return buildTransactionResult(tx, null);
     }
 
+    @Transactional
+    public WalletDTO.TransactionResult unfreezeBalance(ExternalSystem system, WalletDTO.FreezeRequest request) {
+        Long tenantId = system.getTenantId();
+        WalletAccount account = accountRepository.findByTenantIdAndUserId(tenantId, request.getUserId())
+                .orElseThrow(() -> new BizException(ErrorCode.WALLET_ACCOUNT_NOT_FOUND));
+
+        if (account.getFrozen() < request.getAmount()) {
+            throw new BizException(ErrorCode.WALLET_BALANCE_INSUFFICIENT, "冻结金额不足");
+        }
+
+        int updated = accountRepository.unfreeze(account.getId(), request.getAmount(), account.getVersion());
+        if (updated == 0) throw new BizException(ErrorCode.SYSTEM_ERROR, "并发冲突，请重试");
+
+        WalletTransaction tx = new WalletTransaction();
+        tx.setTenantId(tenantId);
+        tx.setTransactionNo(IdGenerator.walletTransactionNo());
+        tx.setAccountId(account.getId());
+        tx.setType(5);
+        tx.setSystemId(system.getId());
+        tx.setAmount(request.getAmount());
+        tx.setBalanceBefore(account.getBalance());
+        tx.setBalanceAfter(account.getBalance() + request.getAmount());
+        tx.setBizOrderNo(request.getBizOrderNo());
+        tx.setRemark("解冻: " + (request.getRemark() != null ? request.getRemark() : ""));
+        tx.setIdempotentKey(system.getId() + ":unfreeze:" + request.getBizOrderNo());
+        transactionRepository.save(tx);
+
+        return buildTransactionResult(tx, null);
+    }
+
+    public WalletDTO.RechargeOrderResponse getRechargeOrder(String orderNo) {
+        RechargeOrder order = orderRepository.findByOrderNo(orderNo)
+                .orElseThrow(() -> new BizException(ErrorCode.RECHARGE_ORDER_NOT_FOUND));
+        return toRechargeResponse(order);
+    }
+
     public WalletDTO.BalanceResponse getBalance(Long tenantId, String userId) {
         WalletAccount account = accountRepository.findByTenantIdAndUserId(tenantId, userId)
                 .orElseThrow(() -> new BizException(ErrorCode.WALLET_ACCOUNT_NOT_FOUND));
@@ -351,6 +387,31 @@ public class WalletService {
                 ? ruleRepository.findByActionId(actionId, pageable)
                 : ruleRepository.findByTenantId(TenantContext.requireTenantId(), pageable);
         return PageResult.from(page.map(this::toRuleResponse));
+    }
+
+    public PageResult<WalletDTO.BalanceResponse> listAccounts(Pageable pageable) {
+        Long tenantId = TenantContext.requireTenantId();
+        Page<WalletAccount> page = accountRepository.findByTenantId(tenantId, pageable);
+        return PageResult.from(page.map(a -> {
+            WalletDTO.BalanceResponse resp = new WalletDTO.BalanceResponse();
+            resp.setUserId(a.getUserId());
+            resp.setBalance(a.getBalance());
+            resp.setBalanceDisplay(WalletDTO.formatAmount(a.getBalance()));
+            resp.setFrozen(a.getFrozen());
+            resp.setTotalRecharged(a.getTotalRecharged());
+            resp.setTotalConsumed(a.getTotalConsumed());
+            return resp;
+        }));
+    }
+
+    public PageResult<WalletDTO.TransactionResponse> listAllTransactions(Pageable pageable) {
+        Long tenantId = TenantContext.requireTenantId();
+        Page<WalletTransaction> txPage = transactionRepository
+                .findByTenantIdOrderByCreatedAtDesc(tenantId, pageable);
+        List<WalletDTO.TransactionResponse> items = txPage.getContent().stream()
+                .map(this::toTransactionResponse).toList();
+        return new PageResult<>(txPage.getTotalElements(), pageable.getPageNumber() + 1,
+                pageable.getPageSize(), items);
     }
 
     @Transactional

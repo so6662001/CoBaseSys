@@ -92,4 +92,14 @@ public class PointAdminController {
             @RequestParam(defaultValue = "20") int pageSize) {
         return ApiResponse.ok(pointService.listAccounts(PageRequest.of(page - 1, pageSize)));
     }
+
+    // ===== Transactions =====
+
+    @Operation(summary = "积分流水列表")
+    @GetMapping("/transactions")
+    public ApiResponse<PageResult<PointDTO.TransactionResponse>> listTransactions(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return ApiResponse.ok(pointService.listAllTransactions(PageRequest.of(page - 1, pageSize)));
+    }
 }

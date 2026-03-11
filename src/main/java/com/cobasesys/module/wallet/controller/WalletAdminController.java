@@ -108,6 +108,24 @@ public class WalletAdminController {
         return ApiResponse.ok();
     }
 
+    // ===== Accounts & Transactions =====
+
+    @Operation(summary = "钱包账户列表")
+    @GetMapping("/accounts")
+    public ApiResponse<PageResult<WalletDTO.BalanceResponse>> listAccounts(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return ApiResponse.ok(walletService.listAccounts(PageRequest.of(page - 1, pageSize)));
+    }
+
+    @Operation(summary = "钱包流水列表")
+    @GetMapping("/transactions")
+    public ApiResponse<PageResult<WalletDTO.TransactionResponse>> listTransactions(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return ApiResponse.ok(walletService.listAllTransactions(PageRequest.of(page - 1, pageSize)));
+    }
+
     // ===== Manual Adjust =====
 
     @Operation(summary = "后台手动调账")
