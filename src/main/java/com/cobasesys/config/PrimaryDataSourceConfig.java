@@ -25,7 +25,8 @@ import java.util.Map;
                 "com.cobasesys.module.wallet",
                 "com.cobasesys.module.member",
                 "com.cobasesys.module.notification",
-                "com.cobasesys.module.webhook"
+                "com.cobasesys.module.webhook",
+                "com.cobasesys.module.security"
         },
         entityManagerFactoryRef = "primaryEntityManagerFactory",
         transactionManagerRef = "primaryTransactionManager"
@@ -58,6 +59,7 @@ public class PrimaryDataSourceConfig {
                         "com.cobasesys.module.member",
                         "com.cobasesys.module.notification",
                         "com.cobasesys.module.webhook",
+                        "com.cobasesys.module.security",
                         "com.cobasesys.common.model")
                 .persistenceUnit("primary")
                 .properties(Map.of(

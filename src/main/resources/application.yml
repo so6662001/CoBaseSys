@@ -84,6 +84,12 @@ cobasesys:
     timestamp-tolerance-seconds: 300
     nonce-expire-seconds: 300
     admin-token: changeme-admin-token
+  security:
+    jwt-secret: cobasesys-jwt-secret-key-must-be-at-least-32-chars
+    jwt-expiration-ms: 1800000
+    refresh-expiration-ms: 604800000
+    chain-secret: cobasesys-chain-secret-key-32chars!!
+    balance-secret: cobasesys-balance-secret-32chars!
   webhook:
     max-retry: 3
     retry-interval-seconds: 30
