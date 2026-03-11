@@ -62,11 +62,18 @@
   </el-dialog>
 
   <!-- 审核通过弹窗 -->
-  <el-dialog v-model="approveVisible" title="审核通过并开票" width="450px">
+  <el-dialog v-model="approveVisible" title="审核通过并开票" width="500px">
+    <el-descriptions :column="2" border style="margin-bottom:16px" v-if="approveRow">
+      <el-descriptions-item label="客户">{{ approveRow.customerName }}</el-descriptions-item>
+      <el-descriptions-item label="金额"><b style="color:#f56c6c">{{ approveRow.totalAmountDisplay }}</b></el-descriptions-item>
+      <el-descriptions-item label="类型">{{ approveRow.invoiceTypeText }}</el-descriptions-item>
+      <el-descriptions-item label="抬头">{{ approveRow.titleName }}</el-descriptions-item>
+      <el-descriptions-item label="税号" :span="2">{{ approveRow.taxNo }}</el-descriptions-item>
+    </el-descriptions>
     <el-form label-width="100px">
       <el-form-item label="开票明细方式">
         <el-select v-model="approveForm.itemMode">
-          <el-option value="DEFAULT" label="默认: 技术服务费" />
+          <el-option value="DEFAULT" label="默认: *信息技术服务*技术服务费" />
           <el-option value="FROM_ORDER" label="从订单明细带入" />
         </el-select>
       </el-form-item>
@@ -101,7 +108,7 @@ import { ElMessage } from 'element-plus'
 const app = useAppStore()
 const list = ref([]), loading = ref(false), total = ref(0), page = ref(1), pageSize = ref(20), filterStatus = ref('PENDING')
 const detailVisible = ref(false), detail = ref(null)
-const approveVisible = ref(false), approveForm = reactive({ itemMode: 'DEFAULT' }), currentId = ref(null)
+const approveVisible = ref(false), approveForm = reactive({ itemMode: 'DEFAULT' }), currentId = ref(null), approveRow = ref(null)
 const rejectVisible = ref(false), rejectReason = ref('')
 const voidVisible = ref(false), voidReason = ref('')
 const actionLoading = ref(false)
@@ -113,7 +120,7 @@ async function fetchData() {
 
 async function viewDetail(row) { const r = await invoiceApi.getById(row.id); detail.value = r.data; detailVisible.value = true }
 
-function openApprove(row) { currentId.value = row.id; approveForm.itemMode = 'DEFAULT'; approveVisible.value = true }
+function openApprove(row) { currentId.value = row.id; approveRow.value = row; approveForm.itemMode = 'DEFAULT'; approveVisible.value = true }
 async function doApprove() {
   actionLoading.value = true
   try { await invoiceApi.approve(currentId.value, { ...approveForm, reviewerId: app.userId, reviewerName: app.realName }); ElMessage.success('开票成功'); approveVisible.value = false; fetchData() } finally { actionLoading.value = false }

@@ -12,4 +12,7 @@ public interface BillingOrderRepository extends JpaRepository<BillingOrder, Long
     Page<BillingOrder> findByTenantIdOrderByCreatedAtDesc(Long tenantId, Pageable pageable);
     Page<BillingOrder> findByTenantIdAndCustomerIdOrderByCreatedAtDesc(Long tenantId, String customerId, Pageable pageable);
     Page<BillingOrder> findByTenantIdAndPaymentStatus(Long tenantId, Integer paymentStatus, Pageable pageable);
+
+    Page<BillingOrder> findByTenantIdAndCustomerIdAndPaymentStatusAndInvoiceStatusOrderByCreatedAtDesc(
+            Long tenantId, String customerId, Integer paymentStatus, Integer invoiceStatus, Pageable pageable);
 }

@@ -176,6 +176,14 @@ public class BillingOrderService {
         return toOrderResp(order);
     }
 
+    public PageResult<BillingDTO.OrderResp> listAvailableForInvoice(String customerId, Pageable pageable) {
+        Long tenantId = TenantContext.requireTenantId();
+        Page<BillingOrder> page = orderRepository
+                .findByTenantIdAndCustomerIdAndPaymentStatusAndInvoiceStatusOrderByCreatedAtDesc(
+                        tenantId, customerId, 1, 0, pageable);
+        return PageResult.from(page.map(this::toOrderResp));
+    }
+
     private void activateSubscriptions(BillingOrder order) {
         List<BillingOrderItem> items = orderItemRepository.findByOrderId(order.getId());
         for (BillingOrderItem item : items) {

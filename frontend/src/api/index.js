@@ -124,9 +124,9 @@ export const invoiceApi = {
   voidInvoice: (id, data) => request.post(`/admin/invoice/applications/${id}/void`, data),
   resendEmail: (id) => request.post(`/admin/invoice/applications/${id}/resend-email`),
   statistics: () => request.get('/admin/invoice/applications/statistics'),
-  apply: (data) => request.post('/api/v1/invoice/apply', data),
-  availableOrders: (params) => request.get('/api/v1/invoice/available-orders', { params }),
-  myApplications: (params) => request.get('/api/v1/invoice/my', { params }),
+  apply: (data) => request.post('/admin/invoice/customer/apply', data),
+  availableOrders: (params) => request.get('/admin/invoice/customer/available-orders', { params }),
+  myApplications: (params) => request.get('/admin/invoice/customer/my', { params }),
 }
 
 // Billing - Products

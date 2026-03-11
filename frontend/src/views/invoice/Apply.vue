@@ -10,7 +10,8 @@
     <div v-if="step===0">
       <el-alert type="info" :closable="false" style="margin-bottom:16px">请选择已付款且未申请开票的订单，支持合并多个订单开票</el-alert>
       <div class="filter-bar"><el-input v-model="customerId" placeholder="客户ID" style="width:160px" /><el-button type="primary" @click="loadOrders">查询</el-button></div>
-      <el-table :data="orders" border @selection-change="onSelect" v-loading="ordersLoading">
+      <el-empty v-if="!ordersLoading && orders.length===0 && customerId" description="暂无可开票的订单" />
+      <el-table v-if="orders.length" :data="orders" border @selection-change="onSelect" v-loading="ordersLoading">
         <el-table-column type="selection" width="50" />
         <el-table-column prop="orderNo" label="订单号" width="190" />
         <el-table-column prop="customerName" label="客户" width="130" />
@@ -81,11 +82,11 @@ const rules = {
 }
 
 async function loadOrders() {
-  if (!customerId.value) return
+  if (!customerId.value) { ElMessage.warning('请输入客户ID'); return }
   ordersLoading.value = true
   try {
     const r = await invoiceApi.availableOrders({ customerId: customerId.value, page:1, pageSize:100 })
-    orders.value = (r.data?.items || []).filter(o => !o.invoiceStatus || o.invoiceStatus === 0)
+    orders.value = r.data?.items || []
   } finally { ordersLoading.value = false }
 }
 

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "发票-客户端")
 @RestController
-@RequestMapping("/api/v1/invoice")
+@RequestMapping("/admin/invoice/customer")
 @RequiredArgsConstructor
 public class InvoiceCustomerController {
 
@@ -24,11 +24,11 @@ public class InvoiceCustomerController {
     private final BillingOrderService orderService;
 
     @GetMapping("/available-orders")
-    @Operation(summary = "可开票订单列表")
+    @Operation(summary = "可开票订单列表(已付款+未开票)")
     public ApiResponse<PageResult<BillingDTO.OrderResp>> availableOrders(
             @RequestParam String customerId,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "50") int pageSize) {
-        return ApiResponse.ok(orderService.list(customerId, 1, PageRequest.of(page - 1, pageSize)));
+        return ApiResponse.ok(orderService.listAvailableForInvoice(customerId, PageRequest.of(page - 1, pageSize)));
     }
 
     @PostMapping("/apply")

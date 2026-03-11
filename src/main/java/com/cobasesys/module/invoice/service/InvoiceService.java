@@ -66,6 +66,10 @@ public class InvoiceService {
             throw new BizException(ErrorCode.RATE_LIMITED, "两次开票申请间隔至少" + minIntervalMinutes + "分钟");
         }
 
+        if (req.getCustomerId() == null || req.getCustomerId().isBlank()) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "客户ID不能为空");
+        }
+
         if ("SPECIAL".equals(req.getInvoiceType())) {
             if (req.getBankName() == null || req.getBankAccount() == null
                     || req.getCompanyAddress() == null || req.getCompanyPhone() == null) {
@@ -77,6 +81,12 @@ public class InvoiceService {
         for (Long orderId : req.getOrderIds()) {
             BillingOrder order = orderRepository.findById(orderId)
                     .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "订单不存在: " + orderId));
+            if (!tenantId.equals(order.getTenantId())) {
+                throw new BizException(ErrorCode.FORBIDDEN, "无权操作该订单");
+            }
+            if (!req.getCustomerId().equals(order.getCustomerId())) {
+                throw new BizException(ErrorCode.FORBIDDEN, "订单不属于当前客户");
+            }
             if (order.getPaymentStatus() != 1) {
                 throw new BizException(ErrorCode.PARAM_INVALID, "订单未付款: " + order.getOrderNo());
             }

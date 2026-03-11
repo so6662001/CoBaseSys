@@ -240,6 +240,7 @@ public class BillingDTO {
         private LocalDateTime paidAt;
         private String remark;
         private Integer status;
+        private Integer invoiceStatus;
         private LocalDateTime createdAt;
         private List<OrderItemResp> items;
     }
