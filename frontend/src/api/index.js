@@ -80,3 +80,83 @@ export const webhookApi = {
   delete: (id) => request.delete(`/admin/webhooks/${id}`),
   listLogs: (params) => request.get('/admin/webhooks/logs', { params }),
 }
+
+// Billing - Products
+export const billingProductApi = {
+  list: (params) => request.get('/admin/billing/products', { params }),
+  getById: (id) => request.get(`/admin/billing/products/${id}`),
+  create: (data) => request.post('/admin/billing/products', data),
+  update: (id, data) => request.put(`/admin/billing/products/${id}`, data),
+  delete: (id) => request.delete(`/admin/billing/products/${id}`),
+}
+
+// Billing - Packages
+export const billingPackageApi = {
+  list: (params) => request.get('/admin/billing/packages', { params }),
+  getById: (id) => request.get(`/admin/billing/packages/${id}`),
+  create: (data) => request.post('/admin/billing/packages', data),
+  update: (id, data) => request.put(`/admin/billing/packages/${id}`, data),
+  delete: (id) => request.delete(`/admin/billing/packages/${id}`),
+  addItem: (id, data) => request.post(`/admin/billing/packages/${id}/items`, data),
+  removeItem: (id, itemId) => request.delete(`/admin/billing/packages/${id}/items/${itemId}`),
+}
+
+// Billing - Pricing Plans
+export const billingPricingApi = {
+  list: (params) => request.get('/admin/billing/pricing-plans', { params }),
+  create: (data) => request.post('/admin/billing/pricing-plans', data),
+  update: (id, data) => request.put(`/admin/billing/pricing-plans/${id}`, data),
+  delete: (id) => request.delete(`/admin/billing/pricing-plans/${id}`),
+}
+
+// Billing - Discount & Gift Rules
+export const billingRuleApi = {
+  listDiscounts: (params) => request.get('/admin/billing/discount-rules', { params }),
+  createDiscount: (data) => request.post('/admin/billing/discount-rules', data),
+  updateDiscount: (id, data) => request.put(`/admin/billing/discount-rules/${id}`, data),
+  deleteDiscount: (id) => request.delete(`/admin/billing/discount-rules/${id}`),
+  listGifts: (params) => request.get('/admin/billing/gift-rules', { params }),
+  createGift: (data) => request.post('/admin/billing/gift-rules', data),
+  updateGift: (id, data) => request.put(`/admin/billing/gift-rules/${id}`, data),
+  deleteGift: (id) => request.delete(`/admin/billing/gift-rules/${id}`),
+}
+
+// Billing - Orders
+export const billingOrderApi = {
+  list: (params) => request.get('/admin/billing/orders', { params }),
+  getById: (idOrNo) => request.get(`/admin/billing/orders/${idOrNo}`),
+  proxyOrder: (data, params) => request.post('/admin/billing/orders/proxy', data, { params }),
+  confirmPayment: (id, params) => request.post(`/admin/billing/orders/${id}/confirm-payment`, null, { params }),
+  cancel: (id) => request.post(`/admin/billing/orders/${id}/cancel`),
+}
+
+// Billing - Subscriptions
+export const billingSubApi = {
+  list: (params) => request.get('/admin/billing/subscriptions', { params }),
+  getById: (id) => request.get(`/admin/billing/subscriptions/${id}`),
+  extend: (id, days) => request.post(`/admin/billing/subscriptions/${id}/extend`, null, { params: { days } }),
+  suspend: (id) => request.post(`/admin/billing/subscriptions/${id}/suspend`),
+  resume: (id) => request.post(`/admin/billing/subscriptions/${id}/resume`),
+  usageLedger: (id, params) => request.get(`/admin/billing/subscriptions/${id}/usage-ledger`, { params }),
+}
+
+// Billing - Trials & Approvals
+export const billingTrialApi = {
+  listTrials: (params) => request.get('/admin/billing/trials', { params }),
+  submitExtend: (trialId, data) => request.post('/admin/billing/trial-extend/apply', data, { params: { trialId } }),
+  listPending: (params) => request.get('/admin/billing/trial-extend/pending', { params }),
+  approve: (id, params) => request.post(`/admin/billing/trial-extend/${id}/approve`, null, { params }),
+  reject: (id, params) => request.post(`/admin/billing/trial-extend/${id}/reject`, null, { params }),
+  listApprovals: (params) => request.get('/admin/billing/trial-extend', { params }),
+}
+
+// Billing - Reports
+export const billingReportApi = {
+  expiringSubscriptions: () => request.get('/admin/billing/reports/expiring-subscriptions'),
+  expiredSubscriptions: () => request.get('/admin/billing/reports/expired-subscriptions'),
+  expiringTrials: (params) => request.get('/admin/billing/reports/expiring-trials', { params }),
+  expiredTrials: (params) => request.get('/admin/billing/reports/expired-trials', { params }),
+  subscriptionDetail: (id) => request.get(`/admin/billing/reports/subscription-detail/${id}`),
+  usageLedger: (params) => request.get('/admin/billing/reports/usage-ledger', { params }),
+  customerAssets: (customerId, params) => request.get(`/admin/billing/reports/customer-assets/${customerId}`, { params }),
+}

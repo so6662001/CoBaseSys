@@ -51,6 +51,39 @@
           <el-menu-item index="/webhooks">Webhook配置</el-menu-item>
           <el-menu-item index="/webhooks/logs">推送日志</el-menu-item>
         </el-sub-menu>
+
+        <el-menu-item-group title="计费模块" />
+
+        <el-sub-menu index="billing-product">
+          <template #title><el-icon><Goods /></el-icon><span>商品管理</span></template>
+          <el-menu-item index="/billing/products">产品管理</el-menu-item>
+          <el-menu-item index="/billing/packages">套餐管理</el-menu-item>
+          <el-menu-item index="/billing/pricing">定价方案</el-menu-item>
+        </el-sub-menu>
+
+        <el-sub-menu index="billing-rule">
+          <template #title><el-icon><Discount /></el-icon><span>营销规则</span></template>
+          <el-menu-item index="/billing/discounts">折扣规则</el-menu-item>
+          <el-menu-item index="/billing/gifts">赠送规则</el-menu-item>
+        </el-sub-menu>
+
+        <el-sub-menu index="billing-order">
+          <template #title><el-icon><ShoppingCart /></el-icon><span>订单中心</span></template>
+          <el-menu-item index="/billing/orders">订单管理</el-menu-item>
+          <el-menu-item index="/billing/orders/proxy">代客下单</el-menu-item>
+        </el-sub-menu>
+
+        <el-sub-menu index="billing-sub">
+          <template #title><el-icon><Calendar /></el-icon><span>订阅中心</span></template>
+          <el-menu-item index="/billing/subscriptions">订阅管理</el-menu-item>
+          <el-menu-item index="/billing/trials">试用管理</el-menu-item>
+          <el-menu-item index="/billing/approvals">延长审批</el-menu-item>
+        </el-sub-menu>
+
+        <el-sub-menu index="billing-report">
+          <template #title><el-icon><DataAnalysis /></el-icon><span>运营报表</span></template>
+          <el-menu-item index="/billing/reports">报表中心</el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
 

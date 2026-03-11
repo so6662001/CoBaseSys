@@ -32,6 +32,18 @@ const routes = [
       { path: 'notifications/records', name: 'NotifyRecords', component: () => import('@/views/notifications/Records.vue'), meta: { title: '通知记录' } },
       { path: 'webhooks', name: 'Webhooks', component: () => import('@/views/webhooks/Index.vue'), meta: { title: 'Webhook' } },
       { path: 'webhooks/logs', name: 'WebhookLogs', component: () => import('@/views/webhooks/Logs.vue'), meta: { title: 'Webhook日志' } },
+      { path: 'billing/products', name: 'BillingProducts', component: () => import('@/views/billing/products/Index.vue'), meta: { title: '产品管理' } },
+      { path: 'billing/packages', name: 'BillingPackages', component: () => import('@/views/billing/packages/Index.vue'), meta: { title: '套餐管理' } },
+      { path: 'billing/pricing', name: 'BillingPricing', component: () => import('@/views/billing/pricing/Index.vue'), meta: { title: '定价方案' } },
+      { path: 'billing/discounts', name: 'BillingDiscounts', component: () => import('@/views/billing/rules/Discounts.vue'), meta: { title: '折扣规则' } },
+      { path: 'billing/gifts', name: 'BillingGifts', component: () => import('@/views/billing/rules/Gifts.vue'), meta: { title: '赠送规则' } },
+      { path: 'billing/orders', name: 'BillingOrders', component: () => import('@/views/billing/orders/Index.vue'), meta: { title: '订单管理' } },
+      { path: 'billing/orders/proxy', name: 'BillingProxyOrder', component: () => import('@/views/billing/orders/Proxy.vue'), meta: { title: '代客下单' } },
+      { path: 'billing/subscriptions', name: 'BillingSubscriptions', component: () => import('@/views/billing/subscriptions/Index.vue'), meta: { title: '订阅管理' } },
+      { path: 'billing/trials', name: 'BillingTrials', component: () => import('@/views/billing/trials/Index.vue'), meta: { title: '试用管理' } },
+      { path: 'billing/approvals', name: 'BillingApprovals', component: () => import('@/views/billing/trials/Approvals.vue'), meta: { title: '延长审批' } },
+      { path: 'billing/reports', name: 'BillingReports', component: () => import('@/views/billing/reports/Index.vue'), meta: { title: '运营报表' } },
+      { path: 'billing/reports/customer/:customerId', name: 'BillingCustomerAssets', component: () => import('@/views/billing/reports/CustomerAssets.vue'), meta: { title: '客户资产' } },
     ]
   },
   {
