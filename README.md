@@ -29,17 +29,22 @@ CoBaseSys 是一套公司级运营底座系统，为旗下多个业务系统提�
 
 ## 技术栈
 
-| 组件 | 技术 | 说明 |
+| 层次 | 技术 | 说明 |
 |------|------|------|
-| 语言 | Java 21 | 虚拟线程 (Project Loom) 支持百万级并发 |
-| 框架 | Spring Boot 3.2 | 自动配置、虚拟线程原生支持 |
-| 数据库 | PostgreSQL 16 | ACID 事务，高可靠性 |
-| 缓存 | Redis 7 | 分布式锁、限流、热数据缓存 |
-| ORM | Spring Data JPA + Hibernate | 乐观锁、Hibernate Filter 多租户 |
-| 迁移 | Flyway | 数据库版本管理 |
-| 文档 | SpringDoc OpenAPI | 自动生成 Swagger API 文档 |
-| 分布式锁 | Redisson | 高性能 Redis 分布式锁 |
-| 容器化 | Docker + Docker Compose | 一键启动开发环境 |
+| **后端语言** | Java 21 | 虚拟线程 (Project Loom) 支持百万级并发 |
+| **后端框架** | Spring Boot 3.2 | 自动配置、虚拟线程原生支持 |
+| **前端框架** | Vue 3 + Vite | Composition API + 极速构建 |
+| **前端UI** | Element Plus | 企业级组件库，中文支持 |
+| **状态管理** | Pinia | Vue 3 官方推荐状态管理 |
+| **路由** | Vue Router 5 | 路由守卫 + 懒加载 |
+| **HTTP客户端** | Axios | 请求拦截 + 统一错误处理 |
+| **数据库** | PostgreSQL 16 | ACID 事务，高可靠性 |
+| **缓存** | Redis 7 | 分布式锁、限流、热数据缓存 |
+| **ORM** | Spring Data JPA + Hibernate | 乐观锁、Hibernate Filter 多租户 |
+| **迁移** | Flyway | 数据库版本管理 |
+| **API文档** | SpringDoc OpenAPI | 自动生成 Swagger API 文档 |
+| **分布式锁** | Redisson | 高性能 Redis 分布式锁 |
+| **容器化** | Docker + Docker Compose | 一键启动开发环境 |
 
 ## 核心模块
 
@@ -119,11 +124,39 @@ docker-compose up -d
 docker-compose up -d postgres redis
 ```
 
-2. 编译运行：
+2. 启动后端：
 ```bash
 mvn clean compile
 mvn spring-boot:run
 ```
+
+3. 启动前端（另一个终端）：
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+前端开发服务器启动在 http://localhost:3000，自动代理 API 到后端 8080 端口。
+
+### 前端管理后台
+
+登录时需要输入：
+- **管理员 Token**：对应 `application.yml` 中的 `cobasesys.auth.admin-token`（默认 `changeme-admin-token`）
+- **租户ID**：默认为 `1`（默认租户）
+
+管理后台功能包括：
+
+| 模块 | 功能 |
+|------|------|
+| 控制台 | Dashboard 概览、快速入口、系统信息 |
+| 租户管理 | 租户 CRUD、状态管理 |
+| 外部系统 | 系统注册、密钥管理、IP白名单 |
+| 积分管理 | 积分动作/规则配置、账户查询 |
+| 钱包管理 | 消费动作/规则配置、充值促销 |
+| 会员管理 | 等级定义、用户会员查询 |
+| 通知服务 | 通知模板/规则配置、发送记录 |
+| Webhook | Webhook 配置、推送日志查看 |
 
 ## 项目结构
 
@@ -133,6 +166,32 @@ CoBaseSys/
 ├── docker-compose.yml                   # Docker Compose
 ├── Dockerfile                           # 容器构建
 ├── SYSTEM_DESIGN.md                     # 系统设计文档
+├── frontend/                            # 前端管理后台
+│   ├── package.json                     # Node.js 依赖
+│   ├── vite.config.js                   # Vite 构建配置
+│   ├── index.html                       # HTML 入口
+│   └── src/
+│       ├── main.js                      # 应用入口
+│       ├── App.vue                      # 根组件
+│       ├── api/                         # API 请求封装
+│       │   ├── request.js               # Axios 实例 + 拦截器
+│       │   └── index.js                 # 各模块 API 方法
+│       ├── router/index.js              # 路由配置 + 守卫
+│       ├── stores/app.js                # Pinia 状态管理
+│       ├── components/                  # 通用组件
+│       │   ├── Layout.vue               # 侧边栏布局
+│       │   └── CrudTable.vue            # 通用CRUD表格
+│       ├── styles/global.scss           # 全局样式
+│       └── views/                       # 页面组件
+│           ├── Login.vue                # 登录页
+│           ├── Dashboard.vue            # 控制台
+│           ├── tenants/                 # 租户管理
+│           ├── systems/                 # 外部系统
+│           ├── points/                  # 积分管理
+│           ├── wallet/                  # 钱包管理
+│           ├── members/                 # 会员管理
+│           ├── notifications/           # 通知服务
+│           └── webhooks/                # Webhook
 ├── src/main/
 │   ├── java/com/cobasesys/
 │   │   ├── CoBaseSysApplication.java    # 启动类
