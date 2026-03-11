@@ -33,7 +33,7 @@
        │               │               │               │
   ┌────┴─────┐  ┌──────┴────┐   ┌──────┴────┐   ┌──────┴────┐
   │ 客户前台  │  │ 钢贸宝系统 │   │ 其他业务系统│   │ 支付网关   │
-  │ 在线购买  │  │ 查询到期   │   │ 查询授权   │   │微信/支付宝 │
+  │PC+H5购买 │  │ 查询到期   │   │ 查询授权   │   │微信/支付宝 │
   └──────────┘  └──────────┘   └──────────┘   └──────────┘
 ```
 
@@ -46,7 +46,30 @@
 | 数据库 | MySQL 8.0+ (InnoDB) | 按需求使用 MySQL |
 | 缓存 | Redis 7 | 订阅状态缓存、分布式调度锁 |
 | 定时任务 | Spring Scheduling + Redis 分布式锁 | 到期提醒调度 |
-| 短信 | 对接短信网关 | 到期/续费/试用提醒 |
+| 短信 | 腾讯云短信 (Tencent Cloud SMS) | 到期/续费/试用提醒 |
+| 管理后台前端 | Vue 3 + Element Plus | PC 管理端 |
+| 客户购买前台 | Vue 3 + Vant 4 | H5 移动端自适应 |
+
+### 1.4 终端适配策略
+
+所有面向客户的页面和管理后台均需支持 H5 移动端操作：
+
+```
+┌──────────────────────────────────────────────┐
+│                终端适配方案                     │
+│                                              │
+│  管理后台 (Admin Portal)                       │
+│  ├─ PC端: Vue 3 + Element Plus               │
+│  └─ 移动端: 响应式布局 (Element Plus 内置适配)   │
+│                                              │
+│  客户购买前台 (Customer Portal)                 │
+│  ├─ H5移动端: Vue 3 + Vant 4 (移动优先)       │
+│  ├─ PC端: 同一套代码自适应                      │
+│  └─ 微信内打开: 支持微信JSAPI支付              │
+│                                              │
+│  API层: 同一套后端API，前端自行适配             │
+└──────────────────────────────────────────────┘
+```
 
 ---
 
@@ -138,6 +161,44 @@
 - 支持扩容/缩容
 - 定价参数：`space_unit`(GB/TB), `unit_price_per_period`, `period_type`
 
+### 3.6 阶梯累进计费 (`TIERED_PROGRESSIVE`)
+
+```
+┌─────────────────┐
+│  用量越大越便宜    │──→ 分段累进计算
+│  鼓励大客户        │
+└─────────────────┘
+```
+
+- 与按量计费类似，但按不同用量区间采用不同单价
+- 区间累进：前 100 次 1元/次，100-500 次 0.8元/次，500+ 次 0.5元/次
+- 适合 API 调用、消息发送等场景
+- 定价参数：`tiered_pricing` JSON 配置
+
+```json
+{
+  "tiers": [
+    {"min": 0, "max": 100, "unit_price": 100},
+    {"min": 100, "max": 500, "unit_price": 80},
+    {"min": 500, "max": null, "unit_price": 50}
+  ]
+}
+```
+
+### 3.7 一次性买断 (`ONE_TIME`)
+
+```
+┌─────────────────┐
+│  一次付清         │──→ 永久使用权
+│  无后续费用        │──→ 无到期概念
+└─────────────────┘
+```
+
+- 一次性支付即获得永久使用权
+- 没有续费和到期的概念
+- 适合数据报告、培训课程、模板文件等数字商品
+- 定价参数：`one_time_price`
+
 ---
 
 ## 四、数据模型设计
@@ -153,9 +214,11 @@ t_billing_product (产品)
 ├── category            : varchar(64)                                -- 分类：software/service/resource/storage
 ├── description         : text                                       -- 产品描述
 ├── icon_url            : varchar(512)                               -- 产品图标
-├── pricing_model       : varchar(30), NOT NULL                      -- ONE_TIME_ANNUAL / SUBSCRIPTION / USAGE_BASED / CLOUD_RENTAL / SPACE_RENTAL
+├── pricing_model       : varchar(30), NOT NULL                      -- ONE_TIME_ANNUAL / SUBSCRIPTION / USAGE_BASED / CLOUD_RENTAL / SPACE_RENTAL / TIERED_PROGRESSIVE / ONE_TIME
 ├── trial_enabled       : tinyint, default 0                         -- 是否支持试用
 ├── trial_days          : int, default 0                             -- 试用天数
+├── trial_extend_enabled: tinyint, default 0                         -- 是否允许延长试用
+├── trial_max_extend_days: int, default 0                            -- 最大可延长天数
 ├── points_payable      : tinyint, default 0                         -- 是否支持积分支付
 ├── max_points_ratio    : decimal(5,2), default 0                    -- 最大积分抵扣比例（0.50 = 50%）
 ├── points_exchange_rate: decimal(12,4), default 0                   -- 积分换算系数（多少积分 = 1元）
@@ -178,6 +241,8 @@ t_billing_package (套餐)
 ├── pricing_model       : varchar(30), NOT NULL
 ├── trial_enabled       : tinyint, default 0
 ├── trial_days          : int, default 0
+├── trial_extend_enabled: tinyint, default 0
+├── trial_max_extend_days: int, default 0
 ├── points_payable      : tinyint, default 0
 ├── max_points_ratio    : decimal(5,2), default 0
 ├── points_exchange_rate: decimal(12,4), default 0
@@ -230,7 +295,10 @@ t_billing_pricing_plan (定价方案)
 ├── space_unit          : varchar(10)                                -- GB / TB
 ├── space_unit_price    : bigint, default 0                          -- 每单位空间每周期价格（分）
 │
-├── validity_days       : int                                        -- 购买后有效天数（如365天）
+│   ── 一次性买断 ──
+├── one_time_price      : bigint, default 0                          -- 一次性买断价格（分）
+│
+├── validity_days       : int                                        -- 购买后有效天数（如365天，一次性买断可为null=永久）
 ├── priority            : int, default 0                             -- 优先级（匹配时用）
 ├── effective_from      : datetime, NOT NULL                         -- 生效开始
 ├── effective_to        : datetime                                   -- 生效结束（null=永久）
@@ -309,6 +377,9 @@ t_billing_order (订单主表)
 ├── customer_id         : varchar(64), NOT NULL                      -- 客户ID
 ├── customer_name       : varchar(128)                               -- 客户名称
 ├── order_type          : varchar(20), NOT NULL                      -- NEW_PURCHASE / RENEWAL / UPGRADE / TRIAL
+├── order_source        : varchar(20), NOT NULL, default 'CUSTOMER'  -- CUSTOMER:客户自助 / ADMIN:后台代客下单
+├── operator_id         : varchar(64)                                -- 操作人ID（后台代客下单时记录操作人）
+├── operator_name       : varchar(128)                               -- 操作人姓名
 │
 │   ── 金额信息 ──
 ├── total_amount        : bigint, NOT NULL                           -- 商品总金额（分）
@@ -441,6 +512,8 @@ t_billing_trial (试用记录)
 ├── status              : varchar(20), NOT NULL                      -- ACTIVE / EXPIRED / CONVERTED
 ├── converted_order_id  : bigint                                     -- 转正订单ID
 ├── contact_info        : varchar(512)                               -- 联系方式（到期提醒时附上）
+├── extend_count        : int, default 0                             -- 已延长次数
+├── total_extend_days   : int, default 0                             -- 累计延长天数
 ├── created_at          : datetime
 └── updated_at          : datetime
   (UK: tenant_id + customer_id + source_type + source_id)            -- 同一客户同一产品只能有一个试用
@@ -450,10 +523,23 @@ t_billing_trial (试用记录)
 
 ## 五、核心业务流程
 
-### 5.1 客户在线购买流程
+### 5.1 在线购买流程（客户自助 + 后台代客下单）
+
+系统支持两种下单方式，共用同一套价格计算和订单处理引擎：
 
 ```
-客户浏览商品
+┌──────────────────────────────────────────────────────┐
+│  方式A: 客户自助下单 (PC/H5)                           │
+│  客户浏览商品 → 加入购物车 → 结算支付                    │
+│  order_source = CUSTOMER                             │
+├──────────────────────────────────────────────────────┤
+│  方式B: 后台代客下单 (管理后台)                         │
+│  管理员选择客户 → 选择产品/套餐 → 确认价格 → 代客下单   │
+│  order_source = ADMIN, operator_id/name 记录操作人    │
+│  支持后台直接确认付款 (线下收款场景)                     │
+└──────────────────────────────────────────────────────┘
+
+共用流程:
   │
   ├→ 选择产品/套餐 + 数量 + 周期
   │
@@ -466,10 +552,10 @@ t_billing_trial (试用记录)
   │
   ├→ 创建订单 (status=待支付)
   │
-  ├→ 客户支付:
-  │   ├→ 余额支付 (调用充值系统余额扣减)
-  │   ├→ 在线支付 (微信/支付宝)
-  │   └→ 线下转账 (后台确认)
+  ├→ 支付:
+  │   ├→ [客户自助] 余额支付 / 微信支付 / 支付宝
+  │   ├→ [客户自助] 线下转账后由后台确认
+  │   └→ [代客下单] 后台直接确认收款
   │
   ├→ 支付成功回调:
   │   ├→ 1. 更新订单状态 (payment_status=已支付)
@@ -478,7 +564,7 @@ t_billing_trial (试用记录)
   │   ├→ 4. 扣减积分 (如使用了积分)
   │   ├→ 5. 发放满额赠送积分
   │   ├→ 6. 发送 Webhook 通知相关业务系统
-  │   └→ 7. 发送购买成功通知
+  │   └→ 7. 发送购买成功短信/通知
   │
   └→ 完成
 ```
@@ -515,12 +601,12 @@ t_billing_trial (试用记录)
       └→ 继续每日提醒 (可配置最长提醒天数)
 ```
 
-### 5.3 试用流程
+### 5.3 试用流程（含延长试用）
 
 ```
 客户申请试用
   │
-  ├→ 校验: 该客户是否已试用过此产品/套餐
+  ├→ 校验: 该客户是否已有此产品/套餐的活跃试用
   ├→ 校验: 产品/套餐是否开启试用
   │
   ├→ 创建试用记录 (t_billing_trial, status=ACTIVE)
@@ -529,13 +615,21 @@ t_billing_trial (试用记录)
   │
   ├→ 试用到期前 3 天:
   │   ├→ 发送提醒 "试用即将到期，请购买正式版"
-  │   └→ 附上联系方式和购买链接
+  │   ├→ 附上联系方式和购买链接
+  │   └→ 若支持延长试用，提醒中附上 "申请延长试用" 链接
   │
-  ├→ 试用到期:
+  ├→ 客户申请延长试用:
+  │   ├→ 校验: 产品/套餐是否允许延长试用 (trial_extend_enabled)
+  │   ├→ 校验: 累计已延长天数 + 本次申请天数 <= trial_max_extend_days
+  │   ├→ 延长 trial.end_date 和 subscription.end_date
+  │   ├→ 更新 trial.extend_count + 1, trial.total_extend_days += 延长天数
+  │   └→ 发送 Webhook 通知业务系统延长试用
+  │
+  ├→ 试用到期 (包括延长后再次到期):
   │   ├→ 更新试用状态 (status=EXPIRED)
   │   ├→ 更新订阅状态 (status=EXPIRED)
   │   ├→ 发送提醒 "试用已到期，请购买正式版继续使用"
-  │   ├→ 附上联系方式
+  │   ├→ 附上联系方式 + 购买链接
   │   └→ 发送 Webhook 通知业务系统关闭试用
   │
   └→ 客户购买正式版:
@@ -556,7 +650,9 @@ t_billing_trial (试用记录)
   │         ├→ SUBSCRIPTION: period_price × 周期数
   │         ├→ USAGE_BASED: unit_price × 用量
   │         ├→ CLOUD_RENTAL: rental_price × 周期数
-  │         └→ SPACE_RENTAL: space_unit_price × 空间量 × 周期数
+  │         ├→ SPACE_RENTAL: space_unit_price × 空间量 × 周期数
+  │         ├→ TIERED_PROGRESSIVE: 按阶梯区间累进计算
+  │         └→ ONE_TIME: one_time_price (一次性)
   │
   ├→ Step 2: 应用折扣
   │   ├→ 产品/套餐维度折扣 (discount_rate × 原价)
@@ -637,9 +733,10 @@ t_billing_trial (试用记录)
 | GET | `/admin/billing/gift-rules` | 赠送规则列表 |
 | DELETE | `/admin/billing/gift-rules/{id}` | 删除规则 |
 | **订单管理** | | |
-| GET | `/admin/billing/orders` | 订单列表 (支持按客户/状态/时间筛选) |
+| POST | `/admin/billing/orders/proxy` | 代客下单 (后台为客户创建订单) |
+| GET | `/admin/billing/orders` | 订单列表 (支持按客户/状态/时间/来源筛选) |
 | GET | `/admin/billing/orders/{id}` | 订单详情 |
-| POST | `/admin/billing/orders/{id}/confirm-payment` | 后台确认付款 (线下支付) |
+| POST | `/admin/billing/orders/{id}/confirm-payment` | 后台确认付款 (线下支付/代客收款) |
 | POST | `/admin/billing/orders/{id}/cancel` | 取消订单 |
 | **订阅管理** | | |
 | GET | `/admin/billing/subscriptions` | 订阅列表 (支持按客户/状态/到期时间筛选) |
@@ -649,6 +746,7 @@ t_billing_trial (试用记录)
 | POST | `/admin/billing/subscriptions/{id}/resume` | 恢复订阅 |
 | **试用管理** | | |
 | GET | `/admin/billing/trials` | 试用列表 |
+| POST | `/admin/billing/trials/{id}/extend` | 后台延长试用 |
 | **提醒记录** | | |
 | GET | `/admin/billing/reminders` | 提醒记录列表 |
 
@@ -675,6 +773,7 @@ t_billing_trial (试用记录)
 | POST | `/api/v1/billing/my/subscriptions/{id}/renew` | 发起续费 |
 | **试用** | | |
 | POST | `/api/v1/billing/trial/apply` | 申请试用 |
+| POST | `/api/v1/billing/trial/{id}/extend` | 申请延长试用 |
 | GET | `/api/v1/billing/my/trials` | 我的试用列表 |
 | **登录提醒** | | |
 | GET | `/api/v1/billing/my/expiring-alerts` | 获取到期/续费提醒 (登录时调用) |
@@ -1027,7 +1126,240 @@ module/billing/
 
 ---
 
-## 十二、数据库选择说明 (MySQL 与 PostgreSQL)
+## 十二、腾讯云短信 (Tencent Cloud SMS) 集成
+
+### 12.1 对接方案
+
+```
+┌──────────────────────────────────────────────────┐
+│              腾讯云短信集成                         │
+│                                                  │
+│  SDK: tencentcloud-sdk-java-sms                  │
+│  认证: SecretId + SecretKey                       │
+│  短信签名: 需在腾讯云控制台申请审核                  │
+│  模板: 在腾讯云控制台配置模板，获取模板ID             │
+│                                                  │
+│  接入层:                                          │
+│  ┌──────────────────────┐                        │
+│  │  SmsService          │                        │
+│  │  ├ sendSms()         │──→ 腾讯云SMS API       │
+│  │  ├ sendBatchSms()    │    (qcloudapi)         │
+│  │  └ checkBalance()    │                        │
+│  └──────────────────────┘                        │
+│                                                  │
+│  配置 (application.yml):                          │
+│    tencent.sms.secret-id: xxx                    │
+│    tencent.sms.secret-key: xxx                   │
+│    tencent.sms.sdk-app-id: xxx                   │
+│    tencent.sms.sign-name: "CoBaseSys"            │
+└──────────────────────────────────────────────────┘
+```
+
+### 12.2 短信模板规划
+
+| 场景 | 模板示例 | 模板变量 |
+|------|---------|---------|
+| 订阅到期提醒 | 您好，您的{1}将于{2}到期，续费价格{3}元，请及时续费。 | 产品名, 到期日期, 价格 |
+| 订阅已过期 | 您好，您的{1}已于{2}到期，为避免影响使用请尽快续费。联系电话：{3} | 产品名, 到期日期, 联系方式 |
+| 试用到期提醒 | 您好，您试用的{1}将于{2}到期，如需继续使用请购买正式版。{3} | 产品名, 到期日期, 联系方式 |
+| 试用延长通知 | 您好，您试用的{1}已延长{2}天，新到期日为{3}。 | 产品名, 延长天数, 新到期日 |
+| 购买成功 | 您好，您已成功购买{1}，有效期至{2}，订单号：{3}。 | 产品名, 到期日期, 订单号 |
+| 支付提醒 | 您好，您有一笔{1}的订单待支付，金额{2}元，请及时完成支付。 | 产品名, 金额 |
+
+---
+
+## 十三、H5移动端设计
+
+### 13.1 客户购买前台 (H5 移动优先)
+
+采用 **Vue 3 + Vant 4** 构建独立的客户前台，移动端优先设计，PC端自适应。
+
+```
+frontend-h5/                            # 客户H5前台
+├── package.json
+├── vite.config.js
+├── src/
+│   ├── main.js
+│   ├── api/                            # API 请求
+│   ├── router/                         # 路由
+│   ├── stores/                         # 客户状态 (Pinia)
+│   ├── styles/                         # 全局样式
+│   └── views/
+│       ├── home/                       # 商城首页
+│       │   └── Index.vue               # 产品/套餐展示
+│       ├── product/
+│       │   └── Detail.vue              # 产品详情 + 定价 + 购买按钮
+│       ├── package/
+│       │   └── Detail.vue              # 套餐详情 + 包含产品 + 购买
+│       ├── cart/
+│       │   └── Index.vue               # 购物车 + 价格计算 + 积分抵扣
+│       ├── order/
+│       │   ├── Confirm.vue             # 订单确认 + 折扣/赠送预览
+│       │   ├── Pay.vue                 # 支付页 (微信/支付宝/余额)
+│       │   ├── Result.vue              # 支付结果
+│       │   └── List.vue               # 我的订单列表
+│       ├── subscription/
+│       │   ├── List.vue               # 我的订阅 (到期状态/剩余量)
+│       │   ├── Detail.vue             # 订阅详情
+│       │   └── Renew.vue              # 续费页面
+│       ├── trial/
+│       │   ├── Apply.vue              # 申请试用
+│       │   ├── Extend.vue             # 申请延长试用
+│       │   └── List.vue               # 我的试用
+│       ├── alert/
+│       │   └── Index.vue              # 到期提醒中心
+│       └── user/
+│           └── Login.vue              # 客户登录
+```
+
+### 13.2 关键H5页面设计
+
+#### 商城首页 (移动端)
+
+```
+┌──────────────────────┐
+│  CoBaseSys 商城       │
+│  ┌──────────────────┐│
+│  │  搜索产品/套餐... ││
+│  └──────────────────┘│
+│                      │
+│  ── 热门套餐 ──       │
+│  ┌────┐ ┌────┐       │
+│  │套餐A│ │套餐B│       │
+│  │¥999│ │¥1999│      │
+│  └────┘ └────┘       │
+│                      │
+│  ── 产品分类 ──       │
+│  [软件] [服务] [资源]  │
+│                      │
+│  ┌──────────────────┐│
+│  │ 钢贸宝企业版用户   ││
+│  │ ¥2000/年          ││
+│  │ [试用] [购买]     ││
+│  └──────────────────┘│
+│  ┌──────────────────┐│
+│  │ 100GB云存储       ││
+│  │ ¥500/年           ││
+│  │ [购买]            ││
+│  └──────────────────┘│
+│                      │
+│  ┌──┐┌──┐┌──┐┌──┐   │
+│  │首页││订阅││订单││我的│  │
+│  └──┘└──┘└──┘└──┘   │
+└──────────────────────┘
+```
+
+#### 我的订阅 (移动端)
+
+```
+┌──────────────────────┐
+│  我的订阅             │
+│                      │
+│  ┌──────────────────┐│
+│  │ 钢贸宝企业版 ×10  ││
+│  │ ● 正常使用        ││
+│  │ 到期: 2026-12-31  ││
+│  │ 剩余: 312天       ││
+│  │ [续费]            ││
+│  └──────────────────┘│
+│                      │
+│  ┌──────────────────┐│
+│  │ 100GB云存储       ││
+│  │ ⚠ 即将到期        ││
+│  │ 到期: 2026-03-10  ││
+│  │ 剩余: 7天  已用53%││
+│  │ [立即续费]        ││
+│  └──────────────────┘│
+│                      │
+│  ┌──────────────────┐│
+│  │ API调用包 (试用中) ││
+│  │ 试用到期: 3-15     ││
+│  │ [延长试用] [购买]  ││
+│  └──────────────────┘│
+└──────────────────────┘
+```
+
+### 13.3 管理后台移动端适配
+
+管理后台 (Element Plus) 通过以下方式支持 H5 移动端：
+
+- Element Plus 内置响应式断点适配
+- 表格在小屏幕自动横向滚动
+- 表单在小屏幕自动堆叠排列
+- 侧边栏在小屏幕自动收起为汉堡菜单
+- 对话框在小屏幕自动全屏展示
+
+---
+
+## 十四、后台代客下单设计
+
+### 14.1 业务场景
+
+- 客户电话/线下沟通后，销售人员在后台为客户创建订单
+- 客户线下付款（银行转账/现金），后台直接确认收款
+- 为VIP客户提供特殊折扣或定制价格
+- 批量为客户开通产品/套餐
+
+### 14.2 代客下单流程
+
+```
+管理员操作:
+  │
+  ├→ 选择/输入客户信息 (customer_id + 客户名称)
+  │
+  ├→ 选择产品/套餐 + 数量 + 周期
+  │
+  ├→ 系统计算标准价格 (与客户自助一致)
+  │
+  ├→ 管理员可调整:
+  │   ├→ 手动调整折扣率
+  │   ├→ 手动调整实付金额
+  │   └→ 添加备注 (说明调价原因)
+  │
+  ├→ 创建订单 (order_source=ADMIN, operator_id/name 记录)
+  │
+  ├→ 确认收款方式:
+  │   ├→ [直接确认] 线下已收款 → 立即激活订阅
+  │   ├→ [发给客户] 生成支付链接发给客户自行支付
+  │   └→ [挂账待付] 创建订单但不支付，等待后续确认
+  │
+  └→ 支付确认后 → 同正常购买流程（激活订阅/赠送/通知）
+```
+
+### 14.3 Admin API 补充
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/admin/billing/orders/proxy` | 代客下单 |
+| POST | `/admin/billing/orders/{id}/confirm-payment` | 确认收款 |
+| POST | `/admin/billing/orders/{id}/generate-pay-link` | 生成支付链接发给客户 |
+
+**代客下单请求示例：**
+
+```json
+POST /admin/billing/orders/proxy
+{
+  "customerId": "C10001",
+  "customerName": "某某钢铁公司",
+  "items": [
+    {
+      "itemType": "PRODUCT",
+      "itemId": 1,
+      "quantity": 10,
+      "periodType": "YEAR",
+      "periodCount": 1
+    }
+  ],
+  "manualDiscountRate": 0.85,
+  "usePoints": false,
+  "remark": "老客户优惠",
+  "autoConfirmPayment": true
+}
+```
+
+---
+
+## 十五、数据库选择说明 (MySQL 与 PostgreSQL)
 
 当前底座系统使用 PostgreSQL，计费模块要求使用 MySQL。两种方案：
 
@@ -1054,21 +1386,29 @@ CoBaseSys 应用
 
 ---
 
-## 十三、确认清单
+## 十六、确认清单
 
-请确认以下设计决策，确认后即可开始编码：
+以下为已确认和待确认事项：
 
-- [ ] **收费模式**：5 种收费模式是否覆盖了所有业务场景？是否需要增加？
-- [ ] **数据模型**：产品/套餐/定价/订单/订阅的表结构是否满足需求？
+### 已确认事项 ✅
+
+- [x] **试用机制**：支持延长试用，产品可配置是否允许延长和最大延长天数
+- [x] **短信通道**：使用腾讯云短信平台 (Tencent Cloud SMS)
+- [x] **收费模式**：在原有 5 种基础上新增 2 种（阶梯累进计费 + 一次性买断），共 7 种收费模式
+- [x] **下单方式**：客户自助下单 + 后台代客下单，共用同一套价格引擎
+- [x] **终端适配**：所有功能支持 H5 移动端操作，客户前台采用 Vant 4 移动优先，管理后台 Element Plus 响应式
+
+### 待确认事项
+
+- [ ] **数据模型**：12 张核心表的字段设计是否满足需求？是否需要增减？
 - [ ] **赠送规则**：买 N 送产品/套餐/积分三种赠送类型是否够用？
 - [ ] **折扣规则**：产品折扣、满额折扣、满额送积分是否覆盖所有折扣场景？
 - [ ] **积分抵扣**：按比例上限 + 汇率换算的方式是否可接受？
 - [ ] **续费定价**：价格锁定到到期日的逻辑是否正确？（到期前续费保原价，过期后用新价）
 - [ ] **提醒策略**：到期前 15 天开始、每天 14:00、短信+应用内，是否需要调整？
-- [ ] **试用机制**：同一客户同一产品只能试用一次是否合理？
 - [ ] **支付方式**：余额支付/微信/支付宝/线下转账，是否需要其他方式？
 - [ ] **数据库**：采用双数据源（PostgreSQL + MySQL）是否可接受？
 - [ ] **外部 API**：到期查询和用量上报的接口设计是否满足业务系统需要？
 - [ ] **性能**：Redis 缓存 + 虚拟线程 + 读写分离的方案是否可接受？
-- [ ] **前端**：计费模块是否需要开发独立的客户购买前台？还是先做管理后台？
-- [ ] **短信通道**：是否已有短信发送服务？需要对接哪个短信平台？
+- [ ] **开发顺序**：建议先后端API → 管理后台前端 → 客户H5前台，是否可接受？
+- [ ] **腾讯云SMS配置**：是否已有腾讯云账号和短信签名？需要我在代码中预留哪些模板？
