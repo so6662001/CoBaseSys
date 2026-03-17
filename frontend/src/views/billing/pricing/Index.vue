@@ -45,6 +45,7 @@
           <el-option value="USAGE_BASED" label="按量计费" /><el-option value="TIERED_PROGRESSIVE" label="阶梯累进" />
           <el-option value="CLOUD_RENTAL" label="云端租用" /><el-option value="SPACE_RENTAL" label="空间租用" />
           <el-option value="ONE_TIME" label="一次性买断" />
+          <el-option value="QUOTA_PLAN" label="月费配额套餐" />
         </el-select></el-form-item></el-col>
       </el-row>
       <el-divider content-position="left">价格配置（按收费模式填写）</el-divider>
@@ -88,6 +89,13 @@
       <template v-if="form.pricingModel==='ONE_TIME'">
         <el-form-item label="买断价(分)"><el-input-number v-model="form.oneTimePrice" :min="0" style="width:100%" /></el-form-item>
       </template>
+      <template v-if="form.pricingModel==='QUOTA_PLAN'">
+        <el-form-item label="月费(分)"><el-input-number v-model="form.periodPrice" :min="0" style="width:100%" /></el-form-item>
+        <el-form-item label="配额配置">
+          <el-input v-model="form.quotaConfig" type="textarea" :rows="4"
+            placeholder='{"quotas":[{"dimension":"customer_count","label":"客户数","limit":50},{"dimension":"delivery_count","label":"提货次数/月","limit":200}]}' />
+        </el-form-item>
+      </template>
       <el-divider content-position="left">有效期</el-divider>
       <el-row :gutter="16">
         <el-col :span="8"><el-form-item label="有效天数"><el-input-number v-model="form.validityDays" :min="0" style="width:100%" /></el-form-item></el-col>
@@ -118,7 +126,7 @@ const form = reactive({ targetType:'PRODUCT', targetId:null, planName:'', pricin
   softwareFee:0, annualServiceFee:0, periodType:'YEAR', periodPrice:0, includedQuantity:0,
   overageUnitName:'', overageUnitPrice:0, unitName:'', unitPrice:0, tieredPricing:'',
   rentalPeriodType:'MONTH', rentalPrice:0, spaceUnit:'GB', spaceUnitPrice:0, oneTimePrice:0,
-  validityDays:365, priority:0, effectiveFrom:null, effectiveTo:null })
+  validityDays:365, priority:0, effectiveFrom:null, effectiveTo:null, quotaConfig:'' })
 const rules = { targetType:[{required:true}], targetId:[{required:true}], planName:[{required:true,message:'必填'}], pricingModel:[{required:true}] }
 
 async function fetchData() {
@@ -133,7 +141,7 @@ async function fetchData() {
 function openDialog(row) {
   isEdit.value = !!row; editId.value = row?.id
   if (row) Object.assign(form, row)
-  else Object.assign(form, { targetType:'PRODUCT', targetId:null, planName:'', pricingModel:'SUBSCRIPTION', softwareFee:0, annualServiceFee:0, periodType:'YEAR', periodPrice:0, includedQuantity:0, overageUnitName:'', overageUnitPrice:0, unitName:'', unitPrice:0, tieredPricing:'', rentalPeriodType:'MONTH', rentalPrice:0, spaceUnit:'GB', spaceUnitPrice:0, oneTimePrice:0, validityDays:365, priority:0, effectiveFrom:null, effectiveTo:null })
+  else Object.assign(form, { targetType:'PRODUCT', targetId:null, planName:'', pricingModel:'SUBSCRIPTION', softwareFee:0, annualServiceFee:0, periodType:'YEAR', periodPrice:0, includedQuantity:0, overageUnitName:'', overageUnitPrice:0, unitName:'', unitPrice:0, tieredPricing:'', rentalPeriodType:'MONTH', rentalPrice:0, spaceUnit:'GB', spaceUnitPrice:0, oneTimePrice:0, validityDays:365, priority:0, effectiveFrom:null, effectiveTo:null, quotaConfig:'' })
   dialogVisible.value = true
 }
 async function handleSubmit() {

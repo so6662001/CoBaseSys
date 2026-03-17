@@ -5,6 +5,7 @@ import com.cobasesys.common.model.PageResult;
 import com.cobasesys.common.tenant.TenantContext;
 import com.cobasesys.module.wallet.dto.WalletDTO;
 import com.cobasesys.module.wallet.service.WalletService;
+import com.cobasesys.module.security.annotation.Auditable;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -129,6 +130,7 @@ public class WalletAdminController {
     // ===== Manual Adjust =====
 
     @Operation(summary = "后台手动调账")
+    @Auditable(module = "wallet", action = "adjust", description = "后台手动调账")
     @PostMapping("/adjust")
     public ApiResponse<WalletDTO.TransactionResult> adjust(
             @RequestParam String userId,

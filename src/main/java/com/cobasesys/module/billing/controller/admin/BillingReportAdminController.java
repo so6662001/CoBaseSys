@@ -77,4 +77,17 @@ public class BillingReportAdminController {
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "50") int pageSize) {
         return ApiResponse.ok(subscriptionService.list(customerId, null, PageRequest.of(page - 1, pageSize)));
     }
+
+    @GetMapping("/revenue-summary")
+    @Operation(summary = "收入汇总报表")
+    public ApiResponse<java.util.Map<String, Object>> revenueSummary() {
+        java.util.Map<String, Object> summary = new java.util.LinkedHashMap<>();
+        var activeSubs = subscriptionService.list(null, "ACTIVE", PageRequest.of(0, 1));
+        var expiringSubs = subscriptionService.getExpiringSoon(TenantContext.requireTenantId());
+        var expiredSubs = subscriptionService.getExpired(TenantContext.requireTenantId());
+        summary.put("totalActiveSubscriptions", activeSubs.getTotal());
+        summary.put("totalExpiringSubscriptions", expiringSubs.size());
+        summary.put("totalExpiredSubscriptions", expiredSubs.size());
+        return ApiResponse.ok(summary);
+    }
 }

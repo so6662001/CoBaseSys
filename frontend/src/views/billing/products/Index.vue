@@ -73,6 +73,7 @@ const pricingModels = [
   { value: 'CLOUD_RENTAL', label: '云端租用' },
   { value: 'SPACE_RENTAL', label: '空间租用' },
   { value: 'ONE_TIME', label: '一次性买断' },
+  { value: 'QUOTA_PLAN', label: '月费配额套餐' },
 ]
 const modelLabel = (v) => pricingModels.find(m => m.value === v)?.label || v
 

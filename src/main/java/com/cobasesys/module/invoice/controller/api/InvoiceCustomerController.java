@@ -7,6 +7,7 @@ import com.cobasesys.module.billing.dto.BillingDTO;
 import com.cobasesys.module.billing.service.BillingOrderService;
 import com.cobasesys.module.invoice.dto.InvoiceDTO;
 import com.cobasesys.module.invoice.service.InvoiceService;
+import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @Tag(name = "发票-客户端")
 @RestController
 @RequestMapping("/admin/invoice/customer")
@@ -49,5 +51,16 @@ public class InvoiceCustomerController {
     @Operation(summary = "申请详情")
     public ApiResponse<InvoiceDTO.ApplicationResponse> detail(@PathVariable Long id) {
         return ApiResponse.ok(invoiceService.getById(id));
+    }
+
+    @PostMapping("/callback")
+    @Operation(summary = "数电API异步回调")
+    public ApiResponse<Void> callback(@RequestBody java.util.Map<String, Object> body) {
+        String requestId = body.get("requestId") != null ? body.get("requestId").toString() : null;
+        if (requestId != null) {
+            // TODO: 根据requestId查找并更新开票申请
+            log.info("Invoice callback received: {}", requestId);
+        }
+        return ApiResponse.ok();
     }
 }

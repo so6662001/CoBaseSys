@@ -4,6 +4,7 @@ import com.cobasesys.common.model.ApiResponse;
 import com.cobasesys.common.model.PageResult;
 import com.cobasesys.module.billing.dto.BillingDTO;
 import com.cobasesys.module.billing.service.BillingOrderService;
+import com.cobasesys.module.security.annotation.Auditable;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -55,6 +56,7 @@ public class BillingOrderAdminController {
     }
 
     @PostMapping("/{id}/confirm-payment")
+    @Auditable(module = "billing", action = "confirm_payment", description = "确认订单付款")
     @Operation(summary = "确认付款")
     public ApiResponse<BillingDTO.OrderResp> confirmPayment(
             @PathVariable Long id,
