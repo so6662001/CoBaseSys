@@ -164,6 +164,7 @@ public class BillingDTO {
         private String targetType;
         private Long targetId;
         private Integer minQuantity = 1;
+        private Integer minPeriodCount;
         private BigDecimal discountRate;
         private Long thresholdAmount = 0L;
         private Long bonusPoints = 0L;

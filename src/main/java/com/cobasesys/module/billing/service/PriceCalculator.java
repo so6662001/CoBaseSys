@@ -211,6 +211,13 @@ public class PriceCalculator {
             return rule.getTargetId() != null && rule.getTargetId().equals(item.getItemId())
                     && item.getQuantity() >= rule.getMinQuantity();
         }
+        if ("PERIOD_DISCOUNT".equals(rule.getDiscountType())) {
+            boolean targetMatch = rule.getTargetId() == null
+                    || (rule.getTargetType() != null && rule.getTargetType().equals(item.getItemType())
+                        && rule.getTargetId().equals(item.getItemId()));
+            int minPeriod = rule.getMinPeriodCount() != null ? rule.getMinPeriodCount() : 1;
+            return targetMatch && item.getPeriodCount() >= minPeriod;
+        }
         return false;
     }
 

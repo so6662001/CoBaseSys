@@ -27,6 +27,7 @@ class PriceCalculatorTest {
 
     @Mock private BillingProductRepository productRepository;
     @Mock private BillingPackageRepository packageRepository;
+    @Mock private BillingPackageItemRepository packageItemRepository;
     @Mock private BillingPricingPlanRepository pricingPlanRepository;
     @Mock private BillingDiscountRuleRepository discountRuleRepository;
     @Mock private BillingGiftRuleRepository giftRuleRepository;
@@ -194,5 +195,73 @@ class PriceCalculatorTest {
         assertEquals(10000, resp.getPointsDeductAmount());
         assertTrue(resp.getPointsNeeded() > 0);
         assertEquals(10000, resp.getActualAmount());
+    }
+
+    @Test
+    void calculateWithPeriodDiscount_2years_gets85off() {
+        BillingProduct product = createProduct(1L, "SaaS订阅", "SUBSCRIPTION");
+        BillingPricingPlan plan = createPlan("SUBSCRIPTION", 99900); // ¥999/年
+
+        BillingDiscountRule periodDiscount = new BillingDiscountRule();
+        periodDiscount.setDiscountType("PERIOD_DISCOUNT");
+        periodDiscount.setTargetType("PRODUCT");
+        periodDiscount.setTargetId(1L);
+        periodDiscount.setMinPeriodCount(2);
+        periodDiscount.setMinQuantity(1);
+        periodDiscount.setDiscountRate(BigDecimal.valueOf(0.85));
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(pricingPlanRepository.findActivePlans(eq("PRODUCT"), eq(1L), any())).thenReturn(List.of(plan));
+        when(discountRuleRepository.findActiveRules(eq(1L), any())).thenReturn(List.of(periodDiscount));
+        when(giftRuleRepository.findActiveRules(eq(1L), any())).thenReturn(List.of());
+
+        BillingDTO.PriceCalculateReq req = new BillingDTO.PriceCalculateReq();
+        req.setCustomerId("C1");
+        BillingDTO.OrderItemReq item = new BillingDTO.OrderItemReq();
+        item.setItemType("PRODUCT"); item.setItemId(1L); item.setQuantity(1);
+        item.setPeriodType("YEAR"); item.setPeriodCount(2); // 买2年
+        req.setItems(List.of(item));
+        req.setUsePoints(false);
+
+        BillingDTO.PriceCalculateResp resp = calculator.calculate(req);
+
+        // 原价: 999 × 2年 = ¥1998 (199800分)
+        assertEquals(199800, resp.getTotalAmount());
+        // 折扣: 199800 × 15% = 29970
+        assertEquals(29970, resp.getDiscountAmount());
+        // 实付: 199800 × 85% = 169830
+        assertEquals(169830, resp.getActualAmount());
+    }
+
+    @Test
+    void calculateWithPeriodDiscount_1year_noDiscount() {
+        BillingProduct product = createProduct(1L, "SaaS订阅", "SUBSCRIPTION");
+        BillingPricingPlan plan = createPlan("SUBSCRIPTION", 99900);
+
+        BillingDiscountRule periodDiscount = new BillingDiscountRule();
+        periodDiscount.setDiscountType("PERIOD_DISCOUNT");
+        periodDiscount.setTargetType("PRODUCT");
+        periodDiscount.setTargetId(1L);
+        periodDiscount.setMinPeriodCount(2);
+        periodDiscount.setMinQuantity(1);
+        periodDiscount.setDiscountRate(BigDecimal.valueOf(0.85));
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(pricingPlanRepository.findActivePlans(eq("PRODUCT"), eq(1L), any())).thenReturn(List.of(plan));
+        when(discountRuleRepository.findActiveRules(eq(1L), any())).thenReturn(List.of(periodDiscount));
+        when(giftRuleRepository.findActiveRules(eq(1L), any())).thenReturn(List.of());
+
+        BillingDTO.PriceCalculateReq req = new BillingDTO.PriceCalculateReq();
+        req.setCustomerId("C1");
+        BillingDTO.OrderItemReq item = new BillingDTO.OrderItemReq();
+        item.setItemType("PRODUCT"); item.setItemId(1L); item.setQuantity(1);
+        item.setPeriodType("YEAR"); item.setPeriodCount(1); // 只买1年,不满足2年门槛
+        req.setItems(List.of(item));
+        req.setUsePoints(false);
+
+        BillingDTO.PriceCalculateResp resp = calculator.calculate(req);
+        assertEquals(99900, resp.getTotalAmount());
+        assertEquals(0, resp.getDiscountAmount()); // 无折扣
+        assertEquals(99900, resp.getActualAmount());
     }
 }

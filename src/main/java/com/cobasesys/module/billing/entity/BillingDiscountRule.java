@@ -28,6 +28,10 @@ public class BillingDiscountRule extends BillingBaseEntity {
     @Column(name = "min_quantity", nullable = false)
     private Integer minQuantity = 1;
 
+    /** 最低购买周期数(PERIOD_DISCOUNT用) */
+    @Column(name = "min_period_count")
+    private Integer minPeriodCount;
+
     @Column(name = "discount_rate", precision = 5, scale = 2)
     private BigDecimal discountRate;
 
