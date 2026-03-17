@@ -154,6 +154,7 @@ public class PriceCalculator {
             case "CLOUD_RENTAL" -> plan.getRentalPrice();
             case "SPACE_RENTAL" -> plan.getSpaceUnitPrice();
             case "ONE_TIME" -> plan.getOneTimePrice();
+            case "QUOTA_PLAN" -> plan.getPeriodPrice();
             default -> 0L;
         };
     }

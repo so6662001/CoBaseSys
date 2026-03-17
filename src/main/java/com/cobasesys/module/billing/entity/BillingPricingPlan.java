@@ -69,6 +69,9 @@ public class BillingPricingPlan extends BillingBaseEntity {
     @Column(name = "one_time_price")
     private Long oneTimePrice = 0L;
 
+    @Column(name = "quota_config", columnDefinition = "JSON")
+    private String quotaConfig;
+
     @Column(name = "validity_days")
     private Integer validityDays;
 

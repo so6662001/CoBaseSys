@@ -75,6 +75,9 @@ public class BillingSubscription extends BillingBaseEntity {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
+    @Column(name = "quota_config", columnDefinition = "JSON")
+    private String quotaConfig;
+
     @Column(name = "auto_renew", nullable = false)
     private Integer autoRenew = 0;
 
