@@ -9,6 +9,7 @@ import com.cobasesys.module.billing.dto.BillingDTO;
 import com.cobasesys.module.billing.entity.*;
 import com.cobasesys.module.billing.event.BillingEvents;
 import com.cobasesys.module.billing.repository.*;
+import com.cobasesys.module.billing.entity.BillingPackageItem;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -32,6 +33,7 @@ public class BillingOrderService {
     private final BillingSubscriptionRepository subscriptionRepository;
     private final BillingProductRepository productRepository;
     private final BillingPackageRepository packageRepository;
+    private final BillingPackageItemRepository packageItemRepository;
     private final BillingPricingPlanRepository pricingPlanRepository;
     private final PriceCalculator priceCalculator;
     private final ApplicationEventPublisher eventPublisher;
@@ -194,32 +196,69 @@ public class BillingOrderService {
                 end = days > 0 ? start.plusDays(days) : start.plusYears(100);
             }
 
-            BillingSubscription sub = new BillingSubscription();
-            sub.setTenantId(order.getTenantId());
-            sub.setCustomerId(order.getCustomerId());
-            sub.setSubscriptionNo(IdGenerator.generate("SUB"));
-            sub.setSourceType(item.getItemType());
-            sub.setSourceId(item.getItemId());
-            sub.setSourceName(item.getItemName());
-            sub.setOrderId(order.getId());
-            sub.setOrderItemId(item.getId());
-            sub.setPricingModel(item.getPricingModel());
-            sub.setPricingPlanId(item.getPricingPlanId());
-            sub.setQuantity(item.getQuantity());
-            sub.setStatus(item.getIsGift() == 1 ? "ACTIVE" : "ACTIVE");
-            sub.setIsTrial(0);
-            sub.setStartDate(start);
-            sub.setEndDate(end);
-            sub.setTotalDays((int) (end.toEpochDay() - start.toEpochDay()));
-            sub.setOriginalUnitPrice(item.getUnitPrice());
-            sub.setRenewalPrice(item.getActualAmount());
-            sub.setPriceLockedUntil(end);
-            subscriptionRepository.save(sub);
-
             item.setStartDate(start);
             item.setEndDate(end);
             orderItemRepository.save(item);
+
+            if ("PACKAGE".equals(item.getItemType())) {
+                activatePackageSubscriptions(order, item, start, end);
+            } else {
+                createSubscription(order, item, item.getItemType(), item.getItemId(),
+                        item.getItemName(), item.getQuantity(), item.getPricingModel(),
+                        item.getPricingPlanId(), item.getUnitPrice(), item.getActualAmount(), start, end);
+            }
         }
+    }
+
+    private void activatePackageSubscriptions(BillingOrder order, BillingOrderItem item,
+                                                LocalDate start, LocalDate end) {
+        List<BillingPackageItem> pkgItems = packageItemRepository.findByPackageIdOrderBySortOrderAsc(item.getItemId());
+
+        if (pkgItems.isEmpty()) {
+            createSubscription(order, item, "PACKAGE", item.getItemId(), item.getItemName(),
+                    item.getQuantity(), item.getPricingModel(), item.getPricingPlanId(),
+                    item.getUnitPrice(), item.getActualAmount(), start, end);
+            return;
+        }
+
+        for (BillingPackageItem pkgItem : pkgItems) {
+            String productName = productRepository.findById(pkgItem.getProductId())
+                    .map(p -> p.getProductName()).orElse("产品#" + pkgItem.getProductId());
+            int totalQty = pkgItem.getQuantity() * item.getQuantity();
+
+            createSubscription(order, item, "PRODUCT", pkgItem.getProductId(),
+                    productName + " (" + item.getItemName() + ")",
+                    totalQty, item.getPricingModel(), item.getPricingPlanId(),
+                    null, null, start, end);
+        }
+    }
+
+    private void createSubscription(BillingOrder order, BillingOrderItem item,
+                                      String sourceType, Long sourceId, String sourceName,
+                                      int quantity, String pricingModel, Long pricingPlanId,
+                                      Long unitPrice, Long renewalPrice,
+                                      LocalDate start, LocalDate end) {
+        BillingSubscription sub = new BillingSubscription();
+        sub.setTenantId(order.getTenantId());
+        sub.setCustomerId(order.getCustomerId());
+        sub.setSubscriptionNo(IdGenerator.generate("SUB"));
+        sub.setSourceType(sourceType);
+        sub.setSourceId(sourceId);
+        sub.setSourceName(sourceName);
+        sub.setOrderId(order.getId());
+        sub.setOrderItemId(item.getId());
+        sub.setPricingModel(pricingModel);
+        sub.setPricingPlanId(pricingPlanId);
+        sub.setQuantity(quantity);
+        sub.setStatus("ACTIVE");
+        sub.setIsTrial(0);
+        sub.setStartDate(start);
+        sub.setEndDate(end);
+        sub.setTotalDays((int) (end.toEpochDay() - start.toEpochDay()));
+        sub.setOriginalUnitPrice(unitPrice);
+        sub.setRenewalPrice(renewalPrice);
+        sub.setPriceLockedUntil(end);
+        subscriptionRepository.save(sub);
     }
 
     private int periodToDays(String periodType) {

@@ -6,6 +6,7 @@ import com.cobasesys.common.tenant.TenantContext;
 import com.cobasesys.module.billing.dto.BillingDTO;
 import com.cobasesys.module.billing.entity.*;
 import com.cobasesys.module.billing.repository.*;
+import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,7 @@ public class PriceCalculator {
 
     private final BillingProductRepository productRepository;
     private final BillingPackageRepository packageRepository;
+    private final BillingPackageItemRepository packageItemRepository;
     private final BillingPricingPlanRepository pricingPlanRepository;
     private final BillingDiscountRuleRepository discountRuleRepository;
     private final BillingGiftRuleRepository giftRuleRepository;
@@ -143,7 +145,48 @@ public class PriceCalculator {
         detail.setOriginalAmount(originalAmount);
         detail.setDiscountAmount(discountAmount);
         detail.setActualAmount(originalAmount - discountAmount);
+
+        if ("PACKAGE".equals(item.getItemType())) {
+            calculateBundleSavings(detail, item, now);
+        }
+
         return detail;
+    }
+
+    private void calculateBundleSavings(BillingDTO.ItemPriceDetail detail,
+                                          BillingDTO.OrderItemReq item, LocalDateTime now) {
+        var pkgItems = packageItemRepository.findByPackageIdOrderBySortOrderAsc(item.getItemId());
+        if (pkgItems.isEmpty()) return;
+
+        long individualTotal = 0;
+        List<BillingDTO.PackageProductDetail> productDetails = new ArrayList<>();
+
+        for (var pkgItem : pkgItems) {
+            BillingDTO.PackageProductDetail pd = new BillingDTO.PackageProductDetail();
+            pd.setProductId(pkgItem.getProductId());
+            pd.setQuantity(pkgItem.getQuantity());
+
+            productRepository.findById(pkgItem.getProductId()).ifPresent(p -> pd.setProductName(p.getProductName()));
+
+            var productPlans = pricingPlanRepository.findActivePlans("PRODUCT", pkgItem.getProductId(), now);
+            if (!productPlans.isEmpty()) {
+                long productUnitPrice = calculateUnitPrice(productPlans.get(0));
+                pd.setUnitPrice(productUnitPrice);
+                long subtotal = productUnitPrice * pkgItem.getQuantity() * item.getPeriodCount();
+                pd.setSubtotal(subtotal);
+                individualTotal += subtotal;
+            }
+            productDetails.add(pd);
+        }
+
+        long bundleTotal = detail.getOriginalAmount();
+        long savings = (individualTotal * item.getQuantity()) - bundleTotal;
+
+        detail.setIndividualTotal(individualTotal * item.getQuantity());
+        detail.setIndividualTotalDisplay(BillingDTO.formatAmount(individualTotal * item.getQuantity()));
+        detail.setBundleSavings(Math.max(savings, 0));
+        detail.setBundleSavingsDisplay(savings > 0 ? BillingDTO.formatAmount(savings) : null);
+        detail.setPackageProducts(productDetails);
     }
 
     private long calculateUnitPrice(BillingPricingPlan plan) {

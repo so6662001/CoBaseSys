@@ -405,6 +405,20 @@ public class BillingDTO {
         private Long originalAmount;
         private Long discountAmount;
         private Long actualAmount;
+        private Long individualTotal;
+        private String individualTotalDisplay;
+        private Long bundleSavings;
+        private String bundleSavingsDisplay;
+        private List<PackageProductDetail> packageProducts;
+    }
+
+    @Data
+    public static class PackageProductDetail {
+        private Long productId;
+        private String productName;
+        private Integer quantity;
+        private Long unitPrice;
+        private Long subtotal;
     }
 
     @Data
